@@ -130,7 +130,8 @@ for f in load("troncon_de_route"):
         c = np.asarray(ln.coords)[:, :2]
         if p["nature"] in DRIVE and libre:
             road_polys.append(LineString(c).buffer(max(w, 3.0) / 2 + 0.3, cap_style=1))
-            niveau = int(p.get("position_par_rapport_au_sol") or 0)
+            _np = str(p.get("position_par_rapport_au_sol") or "0")
+            niveau = int(_np) if _np.lstrip("-").isdigit() else 0                 # « Gué ou radier » et autres valeurs : au sol
             if niveau > 0:
                 ponts_src.append((c, w))
             elif niveau == 0:
