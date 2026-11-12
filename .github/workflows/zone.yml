@@ -5,6 +5,8 @@ on:
     inputs:
       zone: { type: number, required: true }
       paquets: { type: number, default: 16 }
+      blocs: { type: string, default: "" }          # reprise : seulement ces blocs (ix_iy séparés par des espaces)
+      precedent: { type: string, default: "" }      # reprise : numéro du calcul précédent dont on garde les blocs
 jobs:
   communs:
     runs-on: ubuntu-latest
@@ -21,10 +23,10 @@ jobs:
         run: |
           python - <<'PY' >> "$GITHUB_OUTPUT"
           import json, os
-          b = json.load(open("dept/zones.json"))["listes"][int(os.environ["Z"]) - 1]; n = max(1, min(int(os.environ["N"]), len(b)))
+          b = os.environ["B"].split() or json.load(open("dept/zones.json"))["listes"][int(os.environ["Z"]) - 1]; n = max(1, min(int(os.environ["N"]), len(b)))
           print("paquets=" + json.dumps([" ".join(b[k::n]) for k in range(n)]))
           PY
-        env: { Z: "${{ inputs.zone }}", N: "${{ inputs.paquets }}" }
+        env: { Z: "${{ inputs.zone }}", N: "${{ inputs.paquets }}", B: "${{ inputs.blocs }}" }
     outputs:
       paquets: ${{ steps.m.outputs.paquets }}
   calcul:
@@ -70,6 +72,9 @@ jobs:
     runs-on: ubuntu-latest
     environment: { name: github-pages, url: "${{ steps.d.outputs.page_url }}" }
     steps:
+      - uses: actions/download-artifact@v4
+        if: inputs.precedent != ''
+        with: { pattern: "blocs-*", merge-multiple: true, path: site, run-id: "${{ inputs.precedent }}", github-token: "${{ github.token }}" }
       - uses: actions/download-artifact@v4
         with: { pattern: "blocs-*", merge-multiple: true, path: site }
       - run: touch site/.nojekyll && ls site | wc -l && du -sh site

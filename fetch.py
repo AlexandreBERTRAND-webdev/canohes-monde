@@ -27,7 +27,15 @@ def wfs(layer, bbox=None, cql=None, name=None):
             p["BBOX"] = ",".join(str(v) for v in bbox) + ",EPSG:2154"
         if cql:
             p["CQL_FILTER"] = cql
-        js = json.loads(get(WFS + "?" + urllib.parse.urlencode(p)))
+        for essai in range(7):                                             # page d'erreur ou refus temporaire de l'IGN : on réessaie en patientant
+            try:
+                js = json.loads(get(WFS + "?" + urllib.parse.urlencode(p)))
+                break
+            except ValueError:
+                print("  réponse WFS illisible, nouvel essai", essai, file=sys.stderr)
+                time.sleep(min(90, 5 * 2 ** essai))
+        else:
+            raise RuntimeError(f"{layer} : réponses WFS illisibles")
         f = js.get("features", [])
         feats += f
         if len(f) < 5000:
@@ -54,7 +62,11 @@ def raster(layer, bbox, res, name):
             p = dict(SERVICE="WMS", VERSION="1.3.0", REQUEST="GetMap", LAYERS=layer, STYLES="",
                      CRS="EPSG:2154", BBOX=f"{bx0},{by0},{bx1},{by1}", WIDTH=w, HEIGHT=h,
                      FORMAT="image/x-bil;bits=32")
-            raw = get(WMSR + "?" + urllib.parse.urlencode(p))
+            for essai in range(7):
+                raw = get(WMSR + "?" + urllib.parse.urlencode(p))
+                if len(raw) == w * h * 4:
+                    break
+                time.sleep(min(90, 5 * 2 ** essai))
             if len(raw) != w * h * 4:
                 raise RuntimeError(f"{layer}: réponse inattendue {len(raw)} octets: {raw[:300]!r}")
             arr[j0:j0 + h, i0:i0 + w] = np.frombuffer(raw, "<f4").reshape(h, w)

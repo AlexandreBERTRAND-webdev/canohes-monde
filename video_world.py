@@ -795,10 +795,13 @@ if GAME:
     import xml.etree.ElementTree as ET
     from pyproj import Transformer
     TR = Transformer.from_crs(4326, 2154, always_xy=True)
-    rtree = STRtree([ln for ln, _ in road_lines])
+    rtree = STRtree([ln for ln, _ in road_lines] or [Point(0, 0)])
 
     def bord(x, y, extra=0.9):
         """Renvoie (point sur le bord droit de la rue la plus proche, tangente, largeur, point sur l'axe)."""
+        if not road_lines:                                                     # bloc sans route : on pose sur place
+            p_ = np.array([x, y], float)
+            return p_, np.array([1.0, 0.0]), 4.0, p_
         i_ = int(rtree.nearest(Point(x, y)))
         ln, w_ = road_lines[i_]
         s_ = ln.project(Point(x, y)); p_ = np.array(ln.interpolate(s_).coords[0]); q_ = np.array(ln.interpolate(min(s_ + 1, ln.length)).coords[0])
