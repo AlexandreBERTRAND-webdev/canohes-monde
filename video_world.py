@@ -601,7 +601,14 @@ zone = wbox if BLOC else wbox.buffer(-4) if GAME else route_s.buffer(140)
 chaussee = unary_union([ln.buffer(max(w, 3.0) / 2 + 0.1, cap_style=1) for ln, w in road_lines if ln.intersects(zone)]).intersection(zone)
 chaussee = chaussee.union(corridor.buffer(-0.6)).buffer(0.4).buffer(-0.4)
 bfoot = unary_union([b["g"] for b in B])
-trottoir = chaussee.buffer(1.5, join_style=1).difference(chaussee).difference(bfoot.buffer(0.05)).buffer(-0.15).buffer(0.15)
+RAPIDE = ("Type autoroutier", "Bretelle")
+_urb = [ln.buffer(max(w, 3.0) / 2 + 0.1, cap_style=1) for ln, w, nat, _ in axes_src if nat not in RAPIDE and ln.intersects(zone)]
+_rap = [ln.buffer(w / 2 + 4.5, cap_style=2) for ln, w, nat, _ in axes_src if nat in RAPIDE and ln.intersects(zone)]
+# trottoirs : seulement le long des routes ordinaires, jamais sur les autoroutes et bretelles (accotement en herbe à la place)
+trottoir = (unary_union(_urb).buffer(1.5, join_style=1) if _urb else Polygon()).difference(chaussee).difference(bfoot.buffer(0.05))
+if _rap:
+    trottoir = trottoir.difference(unary_union(_rap))
+trottoir = trottoir.buffer(-0.15).buffer(0.15)
 tirets = []
 for ln, w in road_lines:
     if w >= 5.0 and ln.intersects(zone):
@@ -685,10 +692,11 @@ for ln, w, nat, sens in axes_src:
     l_ = ln if sens != "Sens inverse" else LineString(np.asarray(ln.coords)[::-1])
     hw = w / 2 + 0.7
     if nat in ("Type autoroutier", "Route à 2 chaussées") and sens != "Double sens":
-        g_ = ruban(l_, hw + 0.2, -0.2, 0.82, 0.45, [0.80, 0.79, 0.76], _bt, _bc)          # muret béton du terre-plein central
+        g_ = ruban(l_, hw + 0.5, -0.3, 0.9, 0.6, [0.66, 0.65, 0.62], _bt, _bc)            # muret béton du terre-plein central (GBA)
+        ruban(l_, hw + 0.5, 0.88, 0.92, 0.24, [0.85, 0.84, 0.8], _bt, _bc)                  # arête claire du muret
         barrieres.append(g_.buffer(0.35))
     if nat in ("Type autoroutier", "Bretelle"):
-        g_ = ruban(l_, -(hw + 0.4), 0.55, 0.78, 0.08, [0.72, 0.74, 0.76], _bt, _bc)      # lisse de la glissière métallique
+        g_ = ruban(l_, -(hw + 0.6), 0.45, 0.8, 0.12, [0.8, 0.82, 0.85], _bt, _bc)        # lisse de la glissière métallique (galvanisée)
         for t in np.arange(0, l_.length, 4.0):                                              # poteaux tous les 4 m
             q_ = np.array(g_.interpolate(t).coords[0]); z_ = zg(*q_)
             _bt.append(np.array(box_tris([q_[0], q_[1], z_ + 0.35], [0.1, 0.1, 0.7])).reshape(-1, 3, 3)); _bc.append(np.tile([0.55, 0.57, 0.6], (12, 1)))
