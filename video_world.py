@@ -1192,7 +1192,7 @@ if GAME:
             garde.append(s_)
     signs = garde
     log(f"panneaux de direction : {len(signs)} sur {len(groupes)} carrefours du réseau principal")
-    json.dump(dict(named=named, gs=GS, world=WORLD, zedge=float(zedge), cote=COTE, zo=ZO, shops=shops, signs=signs, ponts=ponts_out, agglo=agglo, xo=XO, yo=YO,
+    json.dump(dict(named=named, gs=GS, world=WORLD, zedge=float(zedge), cote=COTE, zo=ZO, villes=[[n_, np.round(np.asarray((q_.exterior if q_.geom_type == "Polygon" else max(q_.geoms, key=lambda r_: r_.area).exterior).simplify(4).coords), 1).tolist()] for n_, p_, _ in villes for q_ in [p_.intersection(wbox.buffer(5))] if not q_.is_empty and q_.geom_type in ("Polygon", "MultiPolygon")], shops=shops, signs=signs, ponts=ponts_out, agglo=agglo, xo=XO, yo=YO,
                    mairie=([LM["Mairie"][0] - XO, LM["Mairie"][1] - YO] if "Mairie" in LM else next(([s_[0], s_[1]] for s_ in shops if s_[5] == "townhall"), [COTE / 2, COTE / 2]))), open(os.path.join(OUT, "extra.json"), "w"))
 # plan de contrôle
 import matplotlib  # noqa: E402

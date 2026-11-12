@@ -1,0 +1,34 @@
+name: Essai du jeu
+# Assemble le jeu avec les blocs d'un calcul précédent, le lance dans Chromium et rend des captures. Rien ne tourne sur le serveur d'alex.
+on:
+  workflow_dispatch:
+    inputs:
+      run_blocs:
+        description: "Numéro du calcul « Blocs » dont on prend les blocs"
+        required: true
+      vues:
+        description: "Vues nom:x:y:cap[:secondes de conduite], séparées par des espaces (x, y en Lambert-93)"
+        required: true
+permissions:
+  contents: read
+  actions: read
+jobs:
+  captures:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: actions/download-artifact@v4
+        with: { pattern: "blocs-*", merge-multiple: true, path: site/blocs, run-id: "${{ inputs.run_blocs }}", github-token: "${{ github.token }}" }
+      - run: python outils/assembler_site.py site blocs/ site/blocs
+      - run: npm i playwright@1.49 && npx playwright install --with-deps chromium
+      - run: |
+          mkdir -p captures
+          (cd site && python -m http.server 8000 >/dev/null 2>&1 &)
+          sleep 2
+          node outils/captures.js http://127.0.0.1:8000/ captures $VUES | tee captures/rapport.txt
+          du -sh site/blocs/* | sort -h | tail -n 12 >> captures/rapport.txt
+        env: { VUES: "${{ inputs.vues }}" }
+      - uses: actions/upload-artifact@v4
+        with: { name: captures, path: captures, retention-days: 14 }

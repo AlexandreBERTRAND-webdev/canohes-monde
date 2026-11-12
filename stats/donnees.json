@@ -1,0 +1,23 @@
+{
+ "genere": "2026-11-12T23:05+01:00",
+ "parties": 0,
+ "km": 0,
+ "joueurs": 0,
+ "visites": 0,
+ "depuis": "2026-11-12T22:00:01.415000+00:00",
+ "blocs": {},
+ "nb_blocs": 0,
+ "ignores": {
+  "partie": 0,
+  "bloc": 0,
+  "km": 0
+ },
+ "tronque": false,
+ "par_jour": [
+  {
+   "jour": "2026-11-12",
+   "parties": 0,
+   "km": 0
+  }
+ ]
+}
