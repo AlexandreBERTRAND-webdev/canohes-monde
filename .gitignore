@@ -1,0 +1,5 @@
+.venv/
+essais/
+data/
+out/
+__pycache__/

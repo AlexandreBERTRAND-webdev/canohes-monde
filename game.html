@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Canohès, balade libre</title>
+<link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Mise en page : le jeu occupe tout l'écran ; infos en haut, commandes tactiles en bas. Thème unique, choisi pour le jeu. */
+  --encre:#ffffff; --ombre:rgba(0,0,0,.72); --panneau:rgba(22,30,38,.78); --trait:rgba(255,255,255,.9); --accent:#ffd23c;
+  --titre:"Anton", Impact, "Arial Narrow", sans-serif; --texte:system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+html,body{height:100%; margin:0; background:#9cc4e4; overflow:hidden; color:var(--encre); font-family:var(--texte); user-select:none; -webkit-user-select:none; touch-action:none}
+canvas#gl{position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none; outline:none}
+#mini{position:fixed; left:14px; top:14px; width:132px; height:132px; border-radius:50%; box-shadow:0 0 0 3px var(--trait), 0 4px 14px rgba(0,0,0,.45)}
+#infos{position:fixed; right:14px; top:12px; text-align:right; text-shadow:0 2px 6px var(--ombre); pointer-events:none}
+#rue{font-family:var(--titre); font-size:clamp(20px,4.6vw,34px); line-height:1.1; letter-spacing:.02em}
+#ville{font-family:var(--titre); font-size:13px; letter-spacing:.34em; opacity:.92; margin-top:3px}
+#vit{font-family:var(--titre); font-size:clamp(26px,6vw,40px); margin-top:8px; font-variant-numeric:tabular-nums}
+#vit small{font-size:.45em; letter-spacing:.08em; margin-left:5px}
+#retour{position:fixed; left:14px; top:160px; font:600 13px var(--texte); color:var(--encre); background:var(--panneau); border:1px solid rgba(255,255,255,.35); border-radius:9px; padding:8px 11px; cursor:pointer}
+#retour:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+#aide{position:fixed; left:50%; bottom:16px; transform:translateX(-50%); background:var(--panneau); border-radius:10px; padding:8px 14px; font-size:13.5px; text-align:center; max-width:calc(100% - 32px); pointer-events:none; transition:opacity .6s}
+#manette, .pedale{position:fixed; bottom:22px; display:none; touch-action:none}
+#manette{left:22px; width:132px; height:132px; border-radius:50%; background:rgba(22,30,38,.45); border:2px solid rgba(255,255,255,.55)}
+#manette i{position:absolute; left:50%; top:50%; width:56px; height:56px; margin:-28px 0 0 -28px; border-radius:50%; background:rgba(255,255,255,.88)}
+.pedale{width:84px; height:84px; border-radius:18px; background:rgba(22,30,38,.5); border:2px solid rgba(255,255,255,.55); color:var(--encre); font:700 30px var(--texte); display:none; align-items:center; justify-content:center}
+#gaz{right:22px; bottom:118px}
+#frein{right:22px}
+.pedale.actif, #manette.actif{background:rgba(255,210,60,.38)}
+body.tactile #manette{display:block} body.tactile .pedale{display:flex} body.tactile #aide{bottom:auto; top:50%}
+#charge{position:fixed; inset:0; background:#16202a; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:24px; text-align:center}
+#charge h1{font-family:var(--titre); font-weight:400; font-size:clamp(44px,12vw,96px); letter-spacing:.07em; margin:0; line-height:1}
+#charge p{margin:0; opacity:.85; font-size:15px}
+#barre{width:min(320px,70vw); height:6px; border-radius:3px; background:rgba(255,255,255,.18); overflow:hidden}
+#barre b{display:block; height:100%; width:4%; background:var(--accent); transition:width .3s}
+#credit{position:fixed; right:10px; bottom:6px; font-size:10.5px; opacity:.7; text-shadow:0 1px 3px var(--ombre); pointer-events:none}
+body.tactile #credit{display:none}
+</style>
+</head>
+<body>
+<canvas id="gl" tabindex="0" aria-label="Balade en voiture dans Canohès"></canvas>
+<canvas id="mini" width="264" height="264"></canvas>
+<button id="retour" type="button">Retour mairie</button>
+<div id="infos"><div id="rue"></div><div id="ville">CANOHÈS</div><div id="vit"><span id="kmh">0</span><small>KM/H</small></div></div>
+<div id="aide">Clique sur le jeu, puis flèches ou ZQSD pour conduire. Espace pour freiner, R pour revenir à la mairie</div>
+<div id="manette"><i></i></div>
+<button class="pedale" id="gaz" type="button" aria-label="Accélérer">▲</button>
+<button class="pedale" id="frein" type="button" aria-label="Freiner ou reculer">▼</button>
+<div id="credit">Données IGN : BD TOPO, LiDAR HD, BD ORTHO</div>
+<div id="charge"><h1>CANOHÈS</h1><p id="etape">Chargement du village…</p><div id="barre"><b></b></div></div>
+<script type="importmap">__IMPORTMAP__</script>
+<script type="module">
+import * as THREE from 'three';
+import { gunzipSync } from 'fflate';
+const el = id => document.getElementById(id);
+const etape = (t, p) => { el('etape').textContent = t; el('barre').firstElementChild.style.width = p + '%'; };
+const tactile = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+if (tactile) { document.body.classList.add('tactile'); el('aide').textContent = 'Manette à gauche pour tourner, ▲ pour avancer, ▼ pour freiner et reculer'; }
+try {
+const D = await (await fetch('monde.json')).json();
+etape('Décompression…', 35);
+const M = D.man;
+const b64 = atob(D.gz); const gz = new Uint8Array(b64.length); for (let i = 0; i < b64.length; i++) gz[i] = b64.charCodeAt(i);
+const bin = gunzipSync(gz);
+const i16 = r => new Int16Array(bin.buffer, bin.byteOffset + r[0], r[1]);
+const u8 = r => new Uint8Array(bin.buffer, bin.byteOffset + r[0], r[1]);
+const W = M.world, H2 = W / 2, GS = M.gs, GN = M.gn;
+const HT = new Uint16Array(bin.buffer, bin.byteOffset + M.hts[0], M.hts[1]);
+const OCC = u8(M.occ), ON = M.occn, OB = Math.ceil(ON / 8);
+// hauteur du sol (x vers l'est, y vers le nord, en mètres)
+function sol(x, y) {
+  const fx = Math.min(GN - 1.001, Math.max(0, x / GS)), fy = Math.min(GN - 1.001, Math.max(0, y / GS));
+  const i = fx | 0, j = fy | 0, u = fx - i, v = fy - j, k = j * GN + i;
+  return ((HT[k] * (1 - u) + HT[k + 1] * u) * (1 - v) + (HT[k + GN] * (1 - u) + HT[k + GN + 1] * u) * v) / 100;
+}
+const mur = (x, y) => { const c = x | 0, r = (ON - y) | 0; if (c < 0 || r < 0 || c >= ON || r >= ON) return true; return (OCC[r * OB + (c >> 3)] >> (7 - (c & 7))) & 1; };
+
+const canvas = el('gl');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: !tactile, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, tactile ? 1.5 : 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+const OMBRES = !tactile;
+renderer.shadowMap.enabled = OMBRES; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const scene = new THREE.Scene();
+const HORIZON = new THREE.Color(0xd6e4ec);
+scene.fog = new THREE.Fog(HORIZON, 420, 3600);
+const camera = new THREE.PerspectiveCamera(62, 1, 0.5, 5200);
+scene.add(new THREE.HemisphereLight(0xdfeeff, 0xb9a98c, OMBRES ? 1.3 : 1.7));
+const sun = new THREE.DirectionalLight(0xfff1dc, 2.35);
+const AZ = 205 * Math.PI / 180, EL = 50 * Math.PI / 180;
+const SD = new THREE.Vector3(Math.sin(AZ) * Math.cos(EL), Math.sin(EL), -Math.cos(AZ) * Math.cos(EL));
+if (OMBRES) { sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.5;
+  Object.assign(sun.shadow.camera, { left: -130, right: 130, top: 130, bottom: -130, near: 100, far: 3000 }); sun.shadow.camera.updateProjectionMatrix(); }
+scene.add(sun, sun.target);
+// ciel et horizon (silhouette stylisée : Canigou, Albères, Corbières)
+let sky, monts;
+{
+  const g = new THREE.SphereGeometry(500, 24, 12), c = new Float32Array(g.attributes.position.count * 3);
+  const top = new THREE.Color(0x4f8fd0), mid = new THREE.Color(0x9cc4e4);
+  for (let i = 0; i < g.attributes.position.count; i++) { const y = Math.max(0, g.attributes.position.getY(i) / 500);
+    const col = HORIZON.clone().lerp(mid, Math.min(1, y * 5)).lerp(top, Math.min(1, Math.pow(y, 0.7))); c.set([col.r, col.g, col.b], i * 3); }
+  g.setAttribute('color', new THREE.BufferAttribute(c, 3));
+  sky = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false, depthTest: false })); sky.renderOrder = -2; scene.add(sky);
+  const R = 480, pos = [], col = [];
+  const bump = (az, c0, w) => Math.exp(-Math.pow(((az - c0 + 540) % 360 - 180) / w, 2));
+  const ang = az => 0.35 + 0.12 * Math.sin(az * 0.37) + 0.1 * Math.sin(az * 1.31 + 1) + 4.1 * bump(az, 244.5, 7) + 2.3 * bump(az, 252, 18) + 2.5 * bump(az, 176, 26) * (0.85 + 0.15 * Math.sin(az * 0.9)) + 1.3 * bump(az, 318, 38) + 0.5 * Math.abs(Math.sin(az * 2.3)) * (bump(az, 244, 40) + bump(az, 176, 40));
+  const P = az => { const a = az * Math.PI / 180, h = R * Math.tan(ang(az) * Math.PI / 180); return [[R * Math.sin(a), -R * 0.02, -R * Math.cos(a)], [R * Math.sin(a), h, -R * Math.cos(a)], h]; };
+  const base = new THREE.Color(0x9db3c4), topc = new THREE.Color(0x8097ad), snow = new THREE.Color(0xf2f5f8);
+  const cc = h => (h > 27 ? snow : topc.clone().lerp(snow, Math.max(0, (h - 21) / 6) * 0.6));
+  for (let i = 0; i < 360; i++) { const [a0, a1, h0] = P(i), [b0, b1, h1] = P(i + 1); pos.push(...a0, ...b0, ...b1, ...a0, ...b1, ...a1);
+    const c0 = cc(h0), c1 = cc(h1); for (const q of [base, base, c1, base, c1, c0]) col.push(q.r, q.g, q.b); }
+  const gm = new THREE.BufferGeometry(); gm.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); gm.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  monts = new THREE.Mesh(gm, new THREE.MeshBasicMaterial({ vertexColors: true, fog: false, side: THREE.DoubleSide, depthTest: false, depthWrite: false })); monts.renderOrder = -1; scene.add(monts);
+}
+function facade() {
+  const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
+  x.fillStyle = '#ffffff'; x.fillRect(0, 0, 128, 128);
+  const g = x.createLinearGradient(0, 0, 0, 128); g.addColorStop(0, 'rgba(0,0,0,0.03)'); g.addColorStop(1, 'rgba(0,0,0,0.10)'); x.fillStyle = g; x.fillRect(0, 0, 128, 128);
+  x.fillStyle = 'rgba(0,0,0,0.10)'; x.fillRect(0, 124, 128, 4);
+  x.fillStyle = '#7a8f86'; x.fillRect(30, 30, 14, 62); x.fillRect(84, 30, 14, 62);
+  x.fillStyle = 'rgba(0,0,0,.18)'; for (let y = 34; y < 92; y += 6) { x.fillRect(30, y, 14, 1.5); x.fillRect(84, y, 14, 1.5); }
+  x.fillStyle = '#e9e6df'; x.fillRect(44, 28, 40, 66);
+  const gl = x.createLinearGradient(44, 30, 84, 92); gl.addColorStop(0, '#2b3d4f'); gl.addColorStop(1, '#52697b'); x.fillStyle = gl; x.fillRect(47, 31, 34, 60);
+  x.fillStyle = '#e9e6df'; x.fillRect(63, 31, 2, 60); x.fillRect(47, 59, 34, 2);
+  x.fillStyle = 'rgba(0,0,0,.22)'; x.fillRect(44, 94, 40, 3);
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
+}
+const detail = (() => { const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d'); const d = x.createImageData(256, 256);
+  let sd = 7; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 65536; i++) { const a = 96 + rnd() * 128, b = 96 + rnd() * 128; d.data.set([a, b, a, 255], i * 4); }
+  x.putImageData(d, 0, 0); const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; })();
+const grain = m => { m.onBeforeCompile = sh => { sh.uniforms.detailMap = { value: detail };
+  sh.fragmentShader = 'uniform sampler2D detailMap;\n' + sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n diffuseColor.rgb *= (0.80 + 0.40 * texture2D(detailMap, vMapUv * 60.0).r) * (0.88 + 0.24 * texture2D(detailMap, vMapUv * 11.0).g);'); }; return m; };
+const mWall = new THREE.MeshLambertMaterial({ map: facade(), vertexColors: true, flatShading: true });
+const mPlain = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide });
+const mOver = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+const photo = async nom => { const b = await (await fetch(nom)).blob(); const t = await new THREE.TextureLoader().loadAsync(URL.createObjectURL(b)); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; };
+const ext = M.ts + 2 * M.pad, SC = M.sc;
+const add = (g, m, cast, recv) => { const o = new THREE.Mesh(g, m); o.castShadow = cast && OMBRES; o.receiveShadow = recv && OMBRES; scene.add(o); return o; };
+function geom(t, ortho, ti, tj) {
+  const q = i16(t.pos), p = new Float32Array(q.length); for (let k = 0; k < q.length; k++) p[k] = q[k] * SC;
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+  if (ortho) { const uv = new Float32Array(q.length / 3 * 2);
+    for (let k = 0, n = 0; k < p.length; k += 3, n += 2) { uv[n] = (p[k] + H2 - (ti * M.ts - M.pad)) / ext; uv[n + 1] = (H2 - p[k + 2] - (tj * M.ts - M.pad)) / ext; }
+    g.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); }
+  if (t.uv) { const s = i16(t.uv), uv = new Float32Array(s.length); for (let k = 0; k < s.length; k++) uv[k] = s[k] / 64; g.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); }
+  if (t.col) g.setAttribute('color', new THREE.BufferAttribute(u8(t.col).slice(), 3, true));
+  g.computeBoundingSphere(); return g;
+}
+const cpt = Math.round(M.ts / GS);
+let fait = 0;
+for (let ti = 0; ti < M.nt; ti++) for (let tj = 0; tj < M.nt; tj++) {
+  const t = M.tiles[ti + '_' + tj], tex = await photo(`sol_${ti}_${tj}.jpg`);
+  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+  // terrain de la dalle, reconstruit depuis la grille de hauteurs
+  const n = cpt + 1, P = new Float32Array(n * n * 3), U = new Float32Array(n * n * 2), I = new Uint16Array(cpt * cpt * 6);
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) { const gi = ti * cpt + i, gj = tj * cpt + j, k = j * n + i, x = gi * GS, y = gj * GS;
+    P.set([x - H2, HT[gj * GN + gi] / 100, -(y - H2)], k * 3); U.set([(x - (ti * M.ts - M.pad)) / ext, (y - (tj * M.ts - M.pad)) / ext], k * 2); }
+  for (let j = 0, q = 0; j < cpt; j++) for (let i = 0; i < cpt; i++) { const a = j * n + i, b = a + 1, c = a + n + 1, d = a + n; I.set([a, b, c, a, c, d], q); q += 6; }
+  const gt = new THREE.BufferGeometry(); gt.setAttribute('position', new THREE.BufferAttribute(P, 3)); gt.setAttribute('uv', new THREE.BufferAttribute(U, 2)); gt.setIndex(new THREE.BufferAttribute(I, 1)); gt.computeVertexNormals(); gt.computeBoundingSphere();
+  add(gt, grain(new THREE.MeshLambertMaterial({ map: tex })), false, true);
+  if (t.roofs) add(geom(t.roofs, true, ti, tj), new THREE.MeshLambertMaterial({ map: tex, flatShading: true, side: THREE.DoubleSide }), true, true);
+  if (t.walls) add(geom(t.walls), mWall, true, true);
+  for (const nm of ['plain', 'trees', 'lamps']) if (t[nm]) add(geom(t[nm]), mPlain, true, nm === 'plain');
+  if (t.over) add(geom(t.over), mOver, false, true);
+  etape('Construction du village…', 40 + 55 * (++fait) / (M.nt * M.nt));
+}
+{ // alentours : photo aérienne large, à plat autour du village
+  const tex = await photo('sol_alentours.jpg'), OE = 6400, pos = [], uv = [], per = [];
+  for (let k = 0; k < 68; k++) per.push([k * W / 68, 0]); for (let k = 0; k < 68; k++) per.push([W, k * W / 68]);
+  for (let k = 0; k < 68; k++) per.push([W - k * W / 68, W]); for (let k = 0; k < 68; k++) per.push([0, W - k * W / 68]);
+  const row = (s, z) => per.map(([x, y]) => { const X = H2 + (x - H2) * s, Y = H2 + (y - H2) * s; return [X, Y, z == null ? sol(x, y) : z]; });
+  const rows = [row(1, null), row(1.22, M.zedge), row(OE / W, M.zedge)], n = per.length;
+  const V = p => { pos.push(p[0] - H2, p[2], -(p[1] - H2)); uv.push((p[0] - (H2 - OE / 2)) / OE, (p[1] - (H2 - OE / 2)) / OE); };
+  for (let k = 0; k < 2; k++) for (let i = 0; i < n; i++) { const a = rows[k][i], b = rows[k][(i + 1) % n], c = rows[k + 1][(i + 1) % n], d = rows[k + 1][i]; [a, b, c, a, c, d].forEach(V); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.computeVertexNormals();
+  scene.add(new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide })));
+}
+// la voiture
+const car = new THREE.Group();
+{ const B = (w, h, d, c, x, y, z, e) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color: c, emissive: e || 0 })); m.position.set(x, y, z); m.castShadow = OMBRES; car.add(m); };
+  B(4.3, 0.62, 1.82, 0xd3202b, 0, 0.66, 0); B(2.25, 0.5, 1.62, 0x1c2731, -0.3, 1.2, 0); B(2.05, 0.08, 1.56, 0xd3202b, -0.3, 1.48, 0);
+  B(0.12, 0.2, 1.84, 0x2a2d31, 2.16, 0.5, 0); B(0.12, 0.2, 1.84, 0x2a2d31, -2.16, 0.5, 0);
+  B(0.06, 0.16, 0.36, 0xfff7cf, 2.17, 0.74, 0.62, 0xfff2b0); B(0.06, 0.16, 0.36, 0xfff7cf, 2.17, 0.74, -0.62, 0xfff2b0);
+  B(0.06, 0.14, 0.4, 0xc81414, -2.17, 0.78, 0.6, 0x7a0606); B(0.06, 0.14, 0.4, 0xc81414, -2.17, 0.78, -0.6, 0x7a0606);
+  for (const [x, z] of [[1.35, 0.86], [1.35, -0.86], [-1.35, 0.86], [-1.35, -0.86]]) { const w = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.26, 14).rotateX(Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x17181a })); w.position.set(x, 0.36, z); w.castShadow = OMBRES; car.add(w); }
+  car.rotation.order = 'YZX'; scene.add(car); }
+
+// ── conduite ──
+const S = { x: M.start.pos[0], y: M.start.pos[1], cap: M.start.cap, v: 0, camCap: M.start.cap };
+const depart = () => { S.x = M.start.pos[0]; S.y = M.start.pos[1]; S.cap = S.camCap = M.start.cap; S.v = 0; S.z = S.cz = undefined; };
+const touches = new Set(); const cmd = { gaz: 0, dir: 0, frein: false };
+const CLES = { ArrowUp: 'h', KeyW: 'h', KeyZ: 'h', ArrowDown: 'b', KeyS: 'b', ArrowLeft: 'g', KeyA: 'g', KeyQ: 'g', ArrowRight: 'd', KeyD: 'd', Space: 'f' };
+addEventListener('keydown', e => { if (e.code === 'KeyR') depart(); const k = CLES[e.code]; if (k) { touches.add(k); e.preventDefault(); masqueAide(); } });
+addEventListener('keyup', e => { const k = CLES[e.code]; if (k) touches.delete(k); });
+addEventListener('blur', () => touches.clear());
+el('retour').addEventListener('click', () => { depart(); canvas.focus(); });
+let aideVue = false; const masqueAide = () => { if (!aideVue) { aideVue = true; el('aide').style.opacity = 0; } };
+// commandes tactiles
+const man = { id: null, x: 0 }, ped = { gaz: false, frein: false };
+const manette = el('manette'), pion = manette.firstElementChild;
+const bouge = e => { const r = manette.getBoundingClientRect(); let dx = (e.clientX - (r.left + r.width / 2)) / (r.width / 2); dx = Math.max(-1, Math.min(1, dx)); man.x = dx; pion.style.transform = `translateX(${dx * 38}px)`; };
+manette.addEventListener('pointerdown', e => { man.id = e.pointerId; try { manette.setPointerCapture(e.pointerId); } catch (_) {} manette.classList.add('actif'); bouge(e); masqueAide(); e.preventDefault(); });
+manette.addEventListener('pointermove', e => { if (e.pointerId === man.id) bouge(e); });
+const lache = e => { if (e.pointerId === man.id) { man.id = null; man.x = 0; pion.style.transform = ''; manette.classList.remove('actif'); } };
+manette.addEventListener('pointerup', lache); manette.addEventListener('pointercancel', lache);
+for (const [id, k] of [['gaz', 'gaz'], ['frein', 'frein']]) { const b = el(id);
+  b.addEventListener('pointerdown', e => { ped[k] = true; try { b.setPointerCapture(e.pointerId); } catch (_) {} b.classList.add('actif'); masqueAide(); e.preventDefault(); });
+  const fin = () => { ped[k] = false; b.classList.remove('actif'); }; b.addEventListener('pointerup', fin); b.addEventListener('pointercancel', fin); }
+addEventListener('contextmenu', e => e.preventDefault());
+
+const VMAX = 25, VREC = -7;
+function avance(dt) {
+  const gaz = (touches.has('h') || ped.gaz ? 1 : 0) - (touches.has('b') || ped.frein ? 1 : 0), frein = touches.has('f');
+  let dir = (touches.has('g') ? 1 : 0) - (touches.has('d') ? 1 : 0); if (man.id !== null) dir = -man.x;
+  cmd.dir += (dir - cmd.dir) * Math.min(1, dt * (tactile ? 9 : 6));
+  if (frein) S.v -= Math.sign(S.v) * Math.min(Math.abs(S.v), 22 * dt);
+  else if (gaz > 0) S.v += (S.v < 0 ? 20 : 8.5 * (1 - S.v / VMAX)) * dt;
+  else if (gaz < 0) S.v -= (S.v > 0.5 ? 18 : 5) * dt;
+  else S.v -= Math.sign(S.v) * Math.min(Math.abs(S.v), 2.2 * dt);
+  S.v = Math.max(VREC, Math.min(VMAX, S.v));
+  const braq = 0.62 / (1 + Math.abs(S.v) * 0.085);
+  const COINS = [[2.1, 0.8], [2.1, -0.8], [-2.1, 0.8], [-2.1, -0.8], [2.2, 0], [-2.2, 0], [0, 0.85], [0, -0.85]];
+  const touche = (x, y, cap) => { if (x < 12 || y < 12 || x > W - 12 || y > W - 12) return true; const c = Math.cos(cap), s = Math.sin(cap);
+    for (const [a, b] of COINS) if (mur(x + c * a - s * b, y + s * a + c * b)) return true; return false; };
+  // déjà coincée dans un mur (après un virage contre une façade) : on la ressort au point libre le plus proche
+  if (touche(S.x, S.y, S.cap)) { sortie: for (let r = 0.4; r <= 6; r += 0.4) for (let k = 0; k < 16; k++) { const a = k * Math.PI / 8, x = S.x + Math.cos(a) * r, y = S.y + Math.sin(a) * r;
+      if (!touche(x, y, S.cap)) { S.x = x; S.y = y; break sortie; } } }
+  const ncap = S.cap + (S.v / 2.6) * Math.tan(cmd.dir * braq) * dt;
+  if (!touche(S.x, S.y, ncap)) S.cap = ncap;                       // on ne pivote pas dans un mur
+  const cx = Math.cos(S.cap), cy = Math.sin(S.cap), dx = cx * S.v * dt, dy = cy * S.v * dt;
+  if (!touche(S.x + dx, S.y + dy, S.cap)) { S.x += dx; S.y += dy; }
+  else if (!touche(S.x + dx, S.y, S.cap)) { S.x += dx; S.v *= 0.9; }   // on glisse le long du mur
+  else if (!touche(S.x, S.y + dy, S.cap)) { S.y += dy; S.v *= 0.9; }
+  else S.v *= -0.25;                                                // choc franc : petit rebond, la marche arrière reste possible
+}
+// noms de rue : index spatial des tronçons
+const CELL = 60, idx = new Map();
+M.roads.forEach(([pts, k, n]) => { if (n < 0) return; for (let i = 0; i < pts.length - 1; i++) { const a = pts[i], b = pts[i + 1], key = ((a[0] + b[0]) / 2 / CELL | 0) + '_' + ((a[1] + b[1]) / 2 / CELL | 0); if (!idx.has(key)) idx.set(key, []); idx.get(key).push([a[0], a[1], b[0], b[1], n]); } });
+function rueProche() { let best = 18, nom = -1; const ci = S.x / CELL | 0, cj = S.y / CELL | 0;
+  for (let i = ci - 1; i <= ci + 1; i++) for (let j = cj - 1; j <= cj + 1; j++) for (const s of (idx.get(i + '_' + j) || [])) {
+    const dx = s[2] - s[0], dy = s[3] - s[1], L = dx * dx + dy * dy || 1, u = Math.max(0, Math.min(1, ((S.x - s[0]) * dx + (S.y - s[1]) * dy) / L)), d = Math.hypot(S.x - s[0] - dx * u, S.y - s[1] - dy * u);
+    if (d < best) { best = d; nom = s[4]; } }
+  return nom; }
+const maj = s => s.toLowerCase().replace(/(^|[\s'-])(\p{L})/gu, (m, a, b) => a + b.toUpperCase()).replace(/\b(De|Du|Des|La|Le|Les|D|L|Et|Aux|Au)\b/g, m => m.toLowerCase()).replace(/^./, m => m.toUpperCase());
+const mini = el('mini').getContext('2d');
+function carte() { const R = 132, sc = R / 170, a = S.camCap - Math.PI / 2;
+  mini.setTransform(1, 0, 0, 1, 0, 0); mini.clearRect(0, 0, 264, 264); mini.save(); mini.beginPath(); mini.arc(R, R, R, 0, 7); mini.clip();
+  mini.fillStyle = 'rgba(28,38,46,.88)'; mini.fillRect(0, 0, 264, 264);
+  mini.translate(R, R + 26); mini.rotate(a); mini.scale(sc, -sc); mini.translate(-S.x, -S.y); mini.lineCap = mini.lineJoin = 'round';
+  for (const pass of [1, 2]) for (const [pts, k] of M.roads) { if (k !== pass) continue; const p0 = pts[0]; if (Math.abs(p0[0] - S.x) > 330 || Math.abs(p0[1] - S.y) > 330) continue;
+    mini.beginPath(); mini.moveTo(pts[0][0], pts[0][1]); for (let q = 1; q < pts.length; q++) mini.lineTo(pts[q][0], pts[q][1]);
+    mini.strokeStyle = k === 1 ? 'rgba(255,255,255,.78)' : '#fff'; mini.lineWidth = k === 1 ? 6 : 9; mini.stroke(); }
+  mini.fillStyle = '#7fd1ff'; mini.beginPath(); mini.arc(M.mairie[0], M.mairie[1], 9, 0, 7); mini.fill();
+  mini.setTransform(1, 0, 0, 1, R, R + 26); mini.rotate(S.camCap - S.cap); mini.fillStyle = '#ffd23c'; mini.strokeStyle = 'rgba(0,0,0,.6)'; mini.lineWidth = 2.5;
+  mini.beginPath(); mini.moveTo(0, -13); mini.lineTo(9, 10); mini.lineTo(0, 5); mini.lineTo(-9, 10); mini.closePath(); mini.fill(); mini.stroke(); mini.restore(); }
+
+function taille() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.fov = w < h ? 78 : 62; camera.updateProjectionMatrix(); }
+addEventListener('resize', taille); taille();
+const V3 = (x, y, z) => new THREE.Vector3(x - H2, z, -(y - H2));
+let t0 = performance.now(), n = 0, nomAff = -2;
+function boucle(t) {
+  requestAnimationFrame(boucle);
+  let dt = Math.min(0.05, (t - t0) / 1000); t0 = t;
+  avance(dt / 2); avance(dt / 2);
+  const cx = Math.cos(S.cap), cy = Math.sin(S.cap), zb = sol(S.x, S.y);
+  // hauteur et pente lissées : la voiture ne tressaute plus sur les facettes du terrain
+  const pb = Math.atan2(sol(S.x + cx * 5, S.y + cy * 5) - sol(S.x - cx * 5, S.y - cy * 5), 10);
+  if (S.z === undefined || Math.abs(zb - S.z) > 3) { S.z = zb; S.p = pb; }
+  S.z += (zb - S.z) * Math.min(1, dt * 5); S.p += (pb - S.p) * Math.min(1, dt * 3);
+  const z = S.z;
+  car.position.copy(V3(S.x, S.y, z + 0.05)); car.rotation.set(-cmd.dir * Math.min(1, Math.abs(S.v) / 14) * 0.04, S.cap, S.p);
+  // caméra de poursuite, qui se rapproche plutôt que d'entrer dans une maison
+  let dc = S.cap - S.camCap; dc = Math.atan2(Math.sin(dc), Math.cos(dc)); S.camCap += dc * Math.min(1, dt * 3.2);
+  const bx = Math.cos(S.camCap), by = Math.sin(S.camCap); let D = innerWidth < innerHeight ? 10 : 8.2;
+  while (D > 3 && mur(S.x - bx * D, S.y - by * D)) D -= 0.6;
+  const px = S.x - bx * D, py = S.y - by * D;
+  S.cz = S.cz === undefined ? z + 3.3 : S.cz + (Math.max(z + 3.3, sol(px, py) + 1.6) - S.cz) * Math.min(1, dt * 4);
+  camera.position.copy(V3(px, py, S.cz)); camera.lookAt(V3(S.x + bx * 6, S.y + by * 6, z + 1.2));
+  sky.position.copy(camera.position); monts.position.set(camera.position.x, camera.position.y - 0.08, camera.position.z);
+  if (OMBRES) { const q = 260 / 256, tx = Math.round(car.position.x / q) * q, tz = Math.round(car.position.z / q) * q; sun.target.position.set(tx, car.position.y, tz); sun.position.set(tx + SD.x * 1500, car.position.y + SD.y * 1500, tz + SD.z * 1500); }
+  else sun.position.copy(SD).multiplyScalar(1000);
+  renderer.render(scene, camera);
+  if (++n % 2 === 0) { carte(); el('kmh').textContent = Math.round(Math.abs(S.v) * 3.6); }
+  if (n % 12 === 0) { const nm = rueProche(); if (nm !== nomAff) { nomAff = nm; el('rue').textContent = nm >= 0 ? maj(M.names[nm]) : ''; } }
+}
+el('charge').style.display = 'none'; canvas.focus(); canvas.addEventListener('pointerdown', () => canvas.focus());
+requestAnimationFrame(boucle);
+window.__pret = true; window.__etat = S; window.__sim = (k, n) => { touches.clear(); if (k) touches.add(k); for (let i = 0; i < n; i++) avance(0.02); touches.clear(); return [+S.x.toFixed(1), +S.y.toFixed(1), +S.v.toFixed(1)]; };
+} catch (e) {
+  el('etape').textContent = 'Le village n’a pas pu se charger (' + e.message + '). Recharge la page.'; console.error(e);
+}
+</script>
+</body>
+</html>
