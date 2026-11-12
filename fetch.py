@@ -7,14 +7,14 @@ WFS = "https://data.geopf.fr/wfs/ows"
 WMSR = "https://data.geopf.fr/wms-r"
 
 
-def get(url, tries=4):
+def get(url, tries=7):
     for i in range(tries):
         try:
             with urllib.request.urlopen(url, timeout=120) as r:
                 return r.read()
         except Exception as e:  # noqa
             print("  retry", i, e, file=sys.stderr)
-            time.sleep(2 + 3 * i)
+            time.sleep(min(60, 3 * 2 ** i))                 # attente croissante : on ménage les serveurs de l IGN
     raise RuntimeError(url)
 
 

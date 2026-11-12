@@ -23,7 +23,8 @@ import io
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 D = os.environ.get("DONNEES") or os.path.join(HERE, "data")
-GAME = os.environ.get("GAME") == "1"          # monde complet pour le jeu : chaussée et trottoirs partout
+GAME = os.environ.get("GAME") == "1"
+BLOC = os.environ.get("BLOC") == "1"           # bloc de 2 km du monde ouvert : raccords exacts avec les voisins, photo légère          # monde complet pour le jeu : chaussée et trottoirs partout
 OUT = os.environ.get("SORTIE") or os.path.join(HERE, "out", "game", "raw") if GAME else os.path.join(HERE, "out", "video", "world")
 os.makedirs(OUT, exist_ok=True)
 sys.path.insert(0, HERE)
@@ -35,7 +36,7 @@ BB = json.load(open(os.path.join(D, "v_bbox.json")))["bbox"]          # carré d
 COTE = int(round(BB[2] - BB[0]))                                       # côté du carré de données, en m
 XO, YO, ZO = BB[0], BB[1], 50.0
 NT = int(os.environ.get("NT", "4"))                                   # NT x NT dalles (Canohès : 4 x 4 dalles de 476 m)
-TS, PAD = (COTE + 4) / NT, 24.0
+TS, PAD = (COTE / NT if BLOC else (COTE + 4) / NT), 24.0
 WORLD = NT * TS
 FPS = 30
 rng = np.random.default_rng(11)
@@ -51,13 +52,20 @@ def load(name):
 
 # ==== relief ====
 mnt = np.load(os.path.join(D, "v_mnt.npy")).astype(float)
+MARGE = int(json.load(open(os.path.join(D, "v_bbox.json"))).get("marge", 0))     # marge de relief autour du bloc (m), pour un lissage identique des deux côtés d'un bord
 mns = np.load(os.path.join(D, "v_mns.npy")).astype(float)
+mnt[~np.isfinite(mnt) | (mnt < -1000)] = 0.0                            # mer et trous du relevé
+mns[~np.isfinite(mns) | (mns < -1000)] = 0.0
+if MARGE:
+    mnt_s = ndi.gaussian_filter(mnt, 1.5)[MARGE:-MARGE, MARGE:-MARGE]
+    mnt, mns = mnt[MARGE:-MARGE, MARGE:-MARGE], mns[2 * MARGE:-2 * MARGE, 2 * MARGE:-2 * MARGE]
 if mnt.min() <= 51:                                                      # altitude de base : 50 m à Canohès, sinon 5 m sous le point le plus bas
     ZO = float(np.floor(mnt.min()) - 5)
 mnh = mns - ndi.zoom(mnt, 2, order=1)
-mnt_s = ndi.gaussian_filter(mnt, 1.5)
-GS = 7.0
-gn = int(WORLD / GS) + 1
+if not MARGE:
+    mnt_s = ndi.gaussian_filter(mnt, 1.5)
+GS = COTE / round(COTE / 7.0) if BLOC else 7.0                         # en bloc : des nœuds de relief exactement sur les bords
+gn = int(round(WORLD / GS)) + 1 if BLOC else int(WORLD / GS) + 1
 gxs = np.arange(gn) * GS
 gX, gY = np.meshgrid(gxs, gxs)
 Zg = ndi.map_coordinates(mnt_s, [np.clip(COTE - gY - 0.5, 0, COTE - 1), np.clip(gX - 0.5, 0, COTE - 1)], order=1, mode="nearest") - ZO
@@ -68,7 +76,15 @@ log("relief", Zg.min().round(1), Zg.max().round(1))
 
 # ==== photo aérienne IGN ====
 MOS = os.path.join(D, "v_ortho_mos.npy")
-if not all(os.path.exists(os.path.join(OUT, f"ortho_{i}_{j}.jpg")) for i in range(NT) for j in range(NT)) or not os.path.exists(MOS):
+if BLOC and not os.path.exists(MOS):
+    # une seule photo à 1 m par pixel : couleur des toits et des arbres, teinte du sol
+    p = dict(SERVICE="WMS", VERSION="1.3.0", REQUEST="GetMap", LAYERS="ORTHOIMAGERY.ORTHOPHOTOS", STYLES="", CRS="EPSG:2154",
+             BBOX=f"{XO},{YO},{XO + COTE},{YO + COTE}", WIDTH=COTE, HEIGHT=COTE, FORMAT="image/jpeg")
+    im = Image.open(io.BytesIO(fetch.get(fetch.WMSR + "?" + urllib.parse.urlencode(p)))).convert("RGB")
+    im.resize((160, 160), Image.LANCZOS).save(os.path.join(OUT, "teinte.jpg"), quality=86)
+    np.save(MOS, np.asarray(im.resize((int(WORLD / 0.5),) * 2, Image.BILINEAR)))
+    log("photo aérienne légère téléchargée")
+elif not all(os.path.exists(os.path.join(OUT, f"ortho_{i}_{j}.jpg")) for i in range(NT) for j in range(NT)) or not os.path.exists(MOS):
     mos = np.zeros((int(WORLD / 0.5), int(WORLD / 0.5), 3), np.uint8)
     for i in range(NT):
         for j in range(NT):
@@ -101,7 +117,7 @@ ABR = {"R": "Rue", "AV": "Avenue", "BD": "Boulevard", "CHE": "Chemin", "ALL": "A
 DRIVE = ("Route à 1 chaussée", "Route à 2 chaussées", "Rond-point", "Bretelle", "Type autoroutier")
 G = nx.DiGraph()
 road_polys, lamps_src, mini, road_lines, cyc_lines, named = [], [], [], [], [], []
-ponts_src, plat_src = [], []                                          # tronçons en pont ; tronçons au sol (pour aplanir la chaussée)
+ponts_src, plat_src, axes_src = [], [], []                            # ... ; axes : (ligne, largeur, nature, sens) pour glissières et terre-plein                                          # tronçons en pont ; tronçons au sol (pour aplanir la chaussée)
 wbox = box(0, 0, WORLD, WORLD)
 for f in load("troncon_de_route"):
     p = f["properties"]
@@ -121,6 +137,7 @@ for f in load("troncon_de_route"):
                 plat_src.append((c, w))
             if niveau == 0:
                 road_lines.append((LineString(c), w))
+                axes_src.append((LineString(c), w, p["nature"], p.get("sens_de_circulation") or "Double sens"))
             mini.append((np.round(c, 1).tolist(), 2 if w >= 5.5 else 1))
             if p.get("prive"):
                 continue
@@ -184,7 +201,13 @@ WAY = json.load(open(os.path.join(HERE, "video_route.json")))["points"]
 _dans = lambda X, Y: XO + 20 < X < XO + COTE - 20 and YO + 20 < Y < YO + COTE - 20
 if not all(_dans(*w_) for w_ in WAY):
     # carré sans le trajet vidéo de Canohès : trajet de secours, du centre vers le point le plus éloigné du plus grand réseau connexe, puis retour
-    _cc = np.array(list(max(nx.strongly_connected_components(G), key=len)))
+    _cc = np.array(list(max(nx.strongly_connected_components(G), key=len))) if G.number_of_nodes() > 1 else np.zeros((0, 2))
+if not all(_dans(*w_) for w_ in WAY) and len(_cc) < 2:                    # bloc sans route (mer, montagne) : trajet fictif au centre
+    G.add_edge((COTE / 2 - 40, COTE / 2), (COTE / 2 + 40, COTE / 2), pts=np.array([[COTE / 2 - 40, COTE / 2], [COTE / 2 + 40, COTE / 2]]), length=80.0, name="", width=4.0, two=True)
+    G.add_edge((COTE / 2 + 40, COTE / 2), (COTE / 2 - 40, COTE / 2), pts=np.array([[COTE / 2 + 40, COTE / 2], [COTE / 2 - 40, COTE / 2]]), length=80.0, name="", width=4.0, two=True)
+    nodes = np.array(list(G.nodes))
+    _cc = nodes
+if not all(_dans(*w_) for w_ in WAY):
     _c0 = _cc[int(np.argmin(np.hypot(_cc[:, 0] - COTE / 2, _cc[:, 1] - COTE / 2)))]
     _c1 = _cc[int(np.argmax(np.hypot(_cc[:, 0] - _c0[0], _cc[:, 1] - _c0[1])))]
     WAY = [[_c0[0] + XO, _c0[1] + YO], [_c1[0] + XO, _c1[1] + YO], [_c0[0] + XO, _c0[1] + YO]]
@@ -237,7 +260,7 @@ for f in load("batiment"):
     if p.get("etat_de_l_objet") not in (None, "En service"):
         continue
     g = loc(shape(f["geometry"]))
-    if not g.within(wbox.buffer(-6)):
+    if not (wbox.contains(g.centroid) if BLOC else g.within(wbox.buffer(-6))):
         continue
     for part in (g.geoms if g.geom_type == "MultiPolygon" else [g]):
         q = Polygon(part.exterior, part.interiors).buffer(0).simplify(0.25)
@@ -338,7 +361,7 @@ class Acc:
         return {k: {a: np.concatenate(v[a]) for a in self.attrs} for k, v in self.d.items() if v["pos"]}
 
 
-roofs, wallsW, plain = Acc(["pos"]), Acc(["pos", "uv", "col"]), Acc(["pos", "col"])
+roofs, wallsW, plain = Acc(["pos", "col"] if BLOC else ["pos"]), Acc(["pos", "uv", "col"]), Acc(["pos", "col"])
 gtree = STRtree([b["g"] for b in B])
 SLOPE, CAP = 0.36, 3.2
 nfail = 0
@@ -400,7 +423,10 @@ for bi, b in enumerate(B):
         rt = np.column_stack([flatp, np.full(len(flatp), z_wall + 0.25)])[tr_]
         wl = [(r[k], r[(k + 1) % len(r)]) for r in rings for k in range(len(r))]
         z_wall += 0.25
-    roofs.add(c.x, c.y, dict(pos=rt.reshape(-1, 3)))
+    if BLOC:                                                        # toit coloré d'après la photo (pas de texture)
+        rv = rt.reshape(-1, 3); roofs.add(c.x, c.y, dict(pos=rv, col=np.tile(np.clip(rc_ * 1.06, 0, 1), (len(rv), 1))))
+    else:
+        roofs.add(c.x, c.y, dict(pos=rt.reshape(-1, 3)))
     wp, wu, wc, pp, pc = [], [], [], [], []
     for a_, b_ in wl:
         L = float(np.hypot(*(b_ - a_)))
@@ -429,6 +455,8 @@ veg = np.isin(l3, 1 + np.nonzero(ndi.sum(veg, l3, range(1, n3 + 1)) >= 16)[0])
 sm = ndi.gaussian_filter(np.where(veg, mnh, 0.0), 1.6)
 dt = ndi.distance_transform_edt(veg) * 0.5
 pk = peak_local_max(sm, min_distance=7, threshold_abs=2.8, labels=veg.astype(int), exclude_border=False)
+if BLOC and len(pk) > 14000:                                             # forêts : plafond d'arbres par bloc, on garde les plus hauts
+    pk = pk[np.argsort(-sm[pk[:, 0], pk[:, 1]])[:14000]]
 ICO_V = np.array([[-1, 1.618, 0], [1, 1.618, 0], [-1, -1.618, 0], [1, -1.618, 0], [0, -1, 1.618], [0, 1, 1.618], [0, -1, -1.618], [0, 1, -1.618],
                   [1.618, 0, -1], [1.618, 0, 1], [-1.618, 0, -1], [-1.618, 0, 1]]) / 1.902
 ICO_F = np.array([[0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11], [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8],
@@ -451,7 +479,7 @@ def prism_tris(cx, cy, z0, z1, r0, r1, n=5, rot=0.0):
 
 for r, c in pk:
     x, y = (c + 0.5) * 0.5, COTE - (r + 0.5) * 0.5
-    if not (8 < x < COTE - 8 and 8 < y < COTE - 8) or corridor.distance(Point(x, y)) < 1.2 or roads_large.contains(Point(x, y)):
+    if not ((0 <= x < COTE and 0 <= y < COTE) if BLOC else (8 < x < COTE - 8 and 8 < y < COTE - 8)) or corridor.distance(Point(x, y)) < 1.2 or roads_large.contains(Point(x, y)):
         continue
     h = float(np.clip(mnh[max(0, r - 2):r + 3, max(0, c - 2):c + 3].max(), 3.0, 22.0))
     cr = float(np.clip(dt[r, c] * 1.15, 1.2, 4.6)) * rng.uniform(0.9, 1.1)
@@ -505,7 +533,7 @@ for c, w in lamps_src:
         nrm = np.array([-d[1], d[0]]) * side
         side = -side
         pos = p + nrm * (w / 2 + 1.1)
-        if bun.contains(Point(pos)) or not (5 < pos[0] < COTE - 5 and 5 < pos[1] < COTE - 5) or (not GAME and route_s.distance(Point(pos)) > 220):
+        if bun.contains(Point(pos)) or not ((0 <= pos[0] < COTE and 0 <= pos[1] < COTE) if BLOC else (5 < pos[0] < COTE - 5 and 5 < pos[1] < COTE - 5)) or (not GAME and route_s.distance(Point(pos)) > 220):
             continue
         z = zg(*pos)
         P = box_tris([pos[0], pos[1], z + 3.2], [0.14, 0.14, 6.4]) + box_tris([pos[0] - nrm[0] * 0.7, pos[1] - nrm[1] * 0.7, z + 6.4], [0.1 + abs(nrm[0]) * 1.4, 0.1 + abs(nrm[1]) * 1.4, 0.1]) \
@@ -565,7 +593,7 @@ def drape(poly, dz, color, jitter=0.0):
     add_mesh(over, tri, col)
 
 
-zone = wbox.buffer(-4) if GAME else route_s.buffer(140)
+zone = wbox if BLOC else wbox.buffer(-4) if GAME else route_s.buffer(140)
 chaussee = unary_union([ln.buffer(max(w, 3.0) / 2 + 0.1, cap_style=1) for ln, w in road_lines if ln.intersects(zone)]).intersection(zone)
 chaussee = chaussee.union(corridor.buffer(-0.6)).buffer(0.4).buffer(-0.4)
 bfoot = unary_union([b["g"] for b in B])
@@ -631,6 +659,39 @@ for ln in ([] if _pl is None else (_pl.geoms if hasattr(_pl, "geoms") else [_pl]
     add_mesh(plain, np.concatenate(tri).astype(np.float64), np.concatenate(col))
     ponts_out.append([np.round(np.column_stack([P, Z]), 2).tolist(), round(hw - 0.3, 2)])
 log("ponts :", len(ponts_out), "tabliers")
+
+# ==== autoroutes et voies rapides : terre-plein central en béton (bord gauche des chaussées à sens unique), glissières métalliques à droite ====
+barrieres = []                                                             # emprises au sol, pour les collisions
+def ruban(ln, off, h0, h1, ep, c_, tri, col):
+    """Muret le long de ln, décalé de off (positif = à gauche), du dessus h1 au-dessus du sol (h0 = bas)."""
+    n = max(2, int(ln.length / 3) + 1)
+    P = np.array([ln.interpolate(t).coords[0] for t in np.linspace(0, ln.length, n)])
+    T = np.gradient(P, axis=0); T /= np.linalg.norm(T, axis=1)[:, None] + 1e-9
+    N_ = np.column_stack([-T[:, 1], T[:, 0]])
+    Z = zgv(P)
+    L3 = lambda o, h: np.column_stack([P + N_ * o, Z + h])
+    for o0, o1, z0, z1 in ((off - ep / 2, off - ep / 2, h0, h1), (off + ep / 2, off + ep / 2, h0, h1), (off - ep / 2, off + ep / 2, h1, h1)):
+        tri.append(quads(L3(o0, z0)[:-1], L3(o1, z1)[:-1], L3(o1, z1)[1:], L3(o0, z0)[1:]))
+        col.append(np.tile(c_, (len(tri[-1]), 1)))
+    return LineString(P + N_ * off)
+_bt, _bc = [], []
+for ln, w, nat, sens in axes_src:
+    if nat not in ("Type autoroutier", "Bretelle", "Route à 2 chaussées") or ln.length < 4:
+        continue
+    l_ = ln if sens != "Sens inverse" else LineString(np.asarray(ln.coords)[::-1])
+    hw = w / 2 + 0.7
+    if nat in ("Type autoroutier", "Route à 2 chaussées") and sens != "Double sens":
+        g_ = ruban(l_, hw + 0.2, -0.2, 0.82, 0.45, [0.80, 0.79, 0.76], _bt, _bc)          # muret béton du terre-plein central
+        barrieres.append(g_.buffer(0.35))
+    if nat in ("Type autoroutier", "Bretelle"):
+        g_ = ruban(l_, -(hw + 0.4), 0.55, 0.78, 0.08, [0.72, 0.74, 0.76], _bt, _bc)      # lisse de la glissière métallique
+        for t in np.arange(0, l_.length, 4.0):                                              # poteaux tous les 4 m
+            q_ = np.array(g_.interpolate(t).coords[0]); z_ = zg(*q_)
+            _bt.append(np.array(box_tris([q_[0], q_[1], z_ + 0.35], [0.1, 0.1, 0.7])).reshape(-1, 3, 3)); _bc.append(np.tile([0.55, 0.57, 0.6], (12, 1)))
+        barrieres.append(g_.buffer(0.3))
+if _bt:
+    add_mesh(plain, np.concatenate(_bt).astype(np.float64), np.concatenate(_bc))
+log("terre-pleins et glissières :", len(barrieres), "tronçons")
 
 # ==== péages (BD TOPO, équipement de transport « Péage ») : auvent, cabines, barrières ====
 peages = 0
@@ -700,7 +761,7 @@ if GAME:
             continue
         for q in (g_.geoms if hasattr(g_, "geoms") else [g_]):
             lims.append(q.exterior)
-    lim = unary_union(lims).difference(chaussee.buffer(1.2)).difference(bfoot.buffer(0.5)).intersection(wbox.buffer(-6))
+    lim = unary_union(lims).difference(chaussee.buffer(1.2)).difference(bfoot.buffer(0.5)).intersection(wbox if BLOC else wbox.buffer(-6))
     lim = shapely.ops.linemerge(lim) if lim.geom_type == "MultiLineString" else lim
     wt, wc, nclo = [], [], 0
     for ln in (lim.geoms if hasattr(lim, "geoms") else [lim]):
@@ -811,7 +872,7 @@ for i in range(NT):
 # ==== alentours : photo aérienne large (2 m par pixel) posée à plat autour du village ====
 OEXT = 6400.0
 OJ = os.path.join(OUT, "ortho_outer.jpg")
-if not os.path.exists(OJ):
+if not BLOC and not os.path.exists(OJ):
     x0, y0 = XO + WORLD / 2 - OEXT / 2, YO + WORLD / 2 - OEXT / 2
     pq = dict(SERVICE="WMS", VERSION="1.3.0", REQUEST="GetMap", LAYERS="ORTHOIMAGERY.ORTHOPHOTOS", STYLES="", CRS="EPSG:2154",
               BBOX=f"{x0},{y0},{x0 + OEXT},{y0 + OEXT}", WIDTH=3200, HEIGHT=3200, FORMAT="image/jpeg")
@@ -833,6 +894,8 @@ for k in range(2):
         otri += [a_, b_, c_, a_, c_, d_]
 otri = np.array(otri, np.float32)
 ouv = (otri[:, :2] - (ctr2 - OEXT / 2)) / OEXT
+if BLOC:                                                                 # pas d'alentours : les blocs voisins les remplacent
+    otri, ouv = np.zeros((0, 3), np.float32), np.zeros((0, 2), np.float32)
 
 # ==== trajectoire de la voiture et caméra, image par image ====
 log("trajectoire")
@@ -964,7 +1027,10 @@ json.dump(man, open(os.path.join(OUT, "world.json"), "w"))
 ntri = sum(v_[1] // 3 for t in tiles.values() for m in t.values() for a, v_ in m.items() if a == "pos") // 3
 log(f"export: {off / 1e6:.0f} Mo, {ntri} triangles")
 if GAME:
-    occ = (lab > 0).reshape(COTE, 2, COTE, 2).any(axis=(1, 3))                 # emprise des bâtiments, 1 m par case, ligne 0 = nord
+    occ_m = lab > 0
+    if barrieres:                                                          # terre-pleins et glissières : la voiture ne les traverse pas
+        occ_m |= features.rasterize([(g_, 1) for g_ in barrieres], out_shape=lab.shape, transform=tr, fill=0, dtype="uint8") > 0
+    occ = occ_m.reshape(COTE, 2, COTE, 2).any(axis=(1, 3))                 # emprise des bâtiments, 1 m par case, ligne 0 = nord
     np.savez_compressed(os.path.join(OUT, "extra.npz"), Zg=Zg.astype(np.float32), occ=occ)
     # commerces (OpenStreetMap) : une enseigne sur la façade côté rue, au-dessus du rez-de-chaussée
     PUB_AM = {"townhall", "school", "kindergarten", "college", "library"}          # lieux publics : nom affiché quand on passe devant
@@ -1003,11 +1069,11 @@ if GAME:
             hb = B[k_]["eave"]
             sx, sy = f_ + n_ * 0.12
             z_ = zg(sx, sy) + min(3.3, max(2.2, hb - 0.7))
-            shops.append([round(float(sx), 2), round(float(sy), 2), round(float(z_), 2), round(float(math.atan2(n_[1], n_[0])), 3), tg["name"], typ, 1])
+            shops.append([round(float(sx), 2), round(float(sy), 2), round(float(z_), 2), round(float(math.atan2(n_[1], n_[0])), 3), tg["name"], typ, 1, tg.get("brand") or ""])
         else:                                                                  # pas de bâtiment : totem au bord de la rue
             n_ = np.asarray(ax_) - np.array([x, y]); d_ = np.hypot(*n_)
             n_ = n_ / d_ if d_ > 0.5 else np.array([1.0, 0.0])
-            shops.append([round(x, 2), round(y, 2), round(zg(x, y) + 1.6, 2), round(float(math.atan2(n_[1], n_[0])), 3), tg["name"], typ, 0])
+            shops.append([round(x, 2), round(y, 2), round(zg(x, y) + 1.6, 2), round(float(math.atan2(n_[1], n_[0])), 3), tg["name"], typ, 0, tg.get("brand") or ""])
     # deux enseignes au même endroit (plusieurs commerces à une adresse) : on les écarte le long de la façade
     for k_, s_ in enumerate(shops):
         voisins = sum(1 for q_ in shops[:k_] if math.hypot(q_[0] - s_[0], q_[1] - s_[1]) < 2.8)
@@ -1126,7 +1192,7 @@ if GAME:
             garde.append(s_)
     signs = garde
     log(f"panneaux de direction : {len(signs)} sur {len(groupes)} carrefours du réseau principal")
-    json.dump(dict(named=named, gs=GS, world=WORLD, zedge=float(zedge), cote=COTE, shops=shops, signs=signs, ponts=ponts_out, agglo=agglo, xo=XO, yo=YO,
+    json.dump(dict(named=named, gs=GS, world=WORLD, zedge=float(zedge), cote=COTE, zo=ZO, shops=shops, signs=signs, ponts=ponts_out, agglo=agglo, xo=XO, yo=YO,
                    mairie=([LM["Mairie"][0] - XO, LM["Mairie"][1] - YO] if "Mairie" in LM else next(([s_[0], s_[1]] for s_ in shops if s_[5] == "townhall"), [COTE / 2, COTE / 2]))), open(os.path.join(OUT, "extra.json"), "w"))
 # plan de contrôle
 import matplotlib  # noqa: E402

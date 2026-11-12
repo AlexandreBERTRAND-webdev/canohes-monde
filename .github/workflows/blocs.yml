@@ -1,0 +1,70 @@
+name: Blocs
+# Calcule une liste de blocs de 2 km et les rend en artefact. Tout le calcul se fait ici, pas sur le serveur d'alex.
+on:
+  workflow_dispatch:
+    inputs:
+      blocs:
+        description: "Liste de blocs ix_iy séparés par des espaces"
+        required: true
+      paquets:
+        description: "Nombre de machines en parallèle"
+        default: "6"
+permissions:
+  contents: read
+jobs:
+  communs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r requirements.txt
+      - run: python prep_dept.py communs
+      - uses: actions/upload-artifact@v4
+        with: { name: communs, path: communs, retention-days: 5 }
+      - id: m
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os
+          b = os.environ["BLOCS"].split(); n = max(1, min(int(os.environ["N"]), len(b)))
+          print("paquets=" + json.dumps([" ".join(b[k::n]) for k in range(n)]))
+          PY
+        env: { BLOCS: "${{ inputs.blocs }}", N: "${{ inputs.paquets }}" }
+    outputs:
+      paquets: ${{ steps.m.outputs.paquets }}
+  calcul:
+    needs: communs
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        paquet: ${{ fromJson(needs.communs.outputs.paquets) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r requirements.txt
+      - uses: actions/download-artifact@v4
+        with: { name: communs, path: communs }
+      - name: Blocs
+        run: |
+          mkdir -p sortie journaux
+          for b in $PAQUET; do
+            ix=${b%_*}; iy=${b#*_}
+            T=$(date +%s)
+            ( DONNEES=$RUNNER_TEMP/d_$b python prep_bloc.py communs $ix $iy \
+              && DONNEES=$RUNNER_TEMP/d_$b SORTIE=$RUNNER_TEMP/r_$b GAME=1 BLOC=1 python video_world.py \
+              && SORTIE=$RUNNER_TEMP/r_$b python export_bloc.py sortie $ix $iy ) > journaux/$b.txt 2>&1 \
+              && echo "$b OK $(( $(date +%s) - T )) s" || { echo "$b ECHEC"; tail -25 journaux/$b.txt; }
+            rm -rf $RUNNER_TEMP/d_$b $RUNNER_TEMP/r_$b
+          done
+        env: { PAQUET: "${{ matrix.paquet }}" }
+      - id: nom
+        run: echo "n=$(echo "$PAQUET" | tr ' ' '-' | cut -c1-80)" >> "$GITHUB_OUTPUT"
+        env: { PAQUET: "${{ matrix.paquet }}" }
+      - uses: actions/upload-artifact@v4
+        with: { name: "blocs-${{ steps.nom.outputs.n }}", path: "sortie", retention-days: 30 }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: "journaux-${{ steps.nom.outputs.n }}", path: "journaux", retention-days: 30 }

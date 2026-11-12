@@ -1,0 +1,13 @@
+numpy
+shapely
+scipy
+rasterio
+scikit-image
+compas_cgal
+networkx
+manifold3d
+Pillow
+mapbox_earcut
+pyproj
+matplotlib
+osmium
