@@ -54,8 +54,8 @@ def load(name):
 mnt = np.load(os.path.join(D, "v_mnt.npy")).astype(float)
 MARGE = int(json.load(open(os.path.join(D, "v_bbox.json"))).get("marge", 0))     # marge de relief autour du bloc (m), pour un lissage identique des deux côtés d'un bord
 mns = np.load(os.path.join(D, "v_mns.npy")).astype(float)
-mnt[~np.isfinite(mnt) | (mnt < -1000)] = 0.0                            # mer et trous du relevé
-mns[~np.isfinite(mns) | (mns < -1000)] = 0.0
+mnt[~np.isfinite(mnt) | (mnt < -50)] = 0.0                              # mer et trous du relevé (le bord de mer renvoie des valeurs aberrantes)
+mns[~np.isfinite(mns) | (mns < -50)] = 0.0
 if MARGE:
     mnt_s = ndi.gaussian_filter(mnt, 1.5)[MARGE:-MARGE, MARGE:-MARGE]
     mnt, mns = mnt[MARGE:-MARGE, MARGE:-MARGE], mns[2 * MARGE:-2 * MARGE, 2 * MARGE:-2 * MARGE]

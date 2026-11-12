@@ -21,10 +21,11 @@ fetch.wfs("CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle", bbox=bbm, name="v_cad
 bbr = [XO - MARGE, YO - MARGE, XO + COTE + MARGE, YO + COTE + MARGE]
 mnt = fetch.raster("IGNF_LIDAR-HD_MNT_ELEVATION.ELEVATIONGRIDCOVERAGE.LAMB93", bbr, 1.0, "v_mnt")
 mns = fetch.raster("IGNF_LIDAR-HD_MNS_ELEVATION.ELEVATIONGRIDCOVERAGE.LAMB93", bbr, 0.5, "v_mns")
-trou = (mnt < -1000) | ~np.isfinite(mnt)
+trou = (mnt < -50) | ~np.isfinite(mnt)                                 # sous -50 m : absence de données (bord de mer), le département n'a rien de plus bas
 if trou.mean() > 0.002:                                                    # trou du relevé laser : relief de secours (RGE ALTI)
     sec = fetch.raster("ELEVATION.ELEVATIONGRIDCOVERAGE.HIGHRES", bbr, 1.0, "v_secours")
     mnt[trou] = sec[trou]
+    mnt[(mnt < -50) | ~np.isfinite(mnt)] = 0.0                           # mer : niveau zéro
     big = np.repeat(np.repeat(trou, 2, 0), 2, 1)
     mns[big] = np.repeat(np.repeat(mnt, 2, 0), 2, 1)[big]
     np.save(os.path.join(fetch.D, "v_mnt.npy"), mnt); np.save(os.path.join(fetch.D, "v_mns.npy"), mns)
