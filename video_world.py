@@ -138,7 +138,7 @@ for f in load("troncon_de_route"):
                 plat_src.append((c, w))
             if niveau == 0:
                 road_lines.append((LineString(c), w))
-                axes_src.append((LineString(c), w, p["nature"], p.get("sens_de_circulation") or "Double sens"))
+                axes_src.append((LineString(c), w, p["nature"], p.get("sens_de_circulation") or "Double sens", bool(p.get("urbain"))))
             mini.append((np.round(c, 1).tolist(), 2 if w >= 5.5 else 1))
             if p.get("prive"):
                 continue
@@ -602,9 +602,9 @@ chaussee = unary_union([ln.buffer(max(w, 3.0) / 2 + 0.1, cap_style=1) for ln, w 
 chaussee = chaussee.union(corridor.buffer(-0.6)).buffer(0.4).buffer(-0.4)
 bfoot = unary_union([b["g"] for b in B])
 RAPIDE = ("Type autoroutier", "Bretelle")
-_urb = [ln.buffer(max(w, 3.0) / 2 + 0.1, cap_style=1) for ln, w, nat, _ in axes_src if nat not in RAPIDE and ln.intersects(zone)]
-_rap = [ln.buffer(w / 2 + 4.5, cap_style=2) for ln, w, nat, _ in axes_src if nat in RAPIDE and ln.intersects(zone)]
-# trottoirs : seulement le long des routes ordinaires, jamais sur les autoroutes et bretelles (accotement en herbe à la place)
+_urb = [ln.buffer(max(w, 3.0) / 2 + 0.1, cap_style=1) for ln, w, nat, _, urb in axes_src if urb and nat not in RAPIDE and ln.intersects(zone)]
+_rap = [ln.buffer(w / 2 + 4.5, cap_style=2) for ln, w, nat, _, urb in axes_src if (nat in RAPIDE or not urb) and ln.intersects(zone)]
+# trottoirs : seulement en agglomération (tronçons « urbains » de la BD TOPO), jamais sur les autoroutes, bretelles et routes de campagne
 trottoir = (unary_union(_urb).buffer(1.5, join_style=1) if _urb else Polygon()).difference(chaussee).difference(bfoot.buffer(0.05))
 if _rap:
     trottoir = trottoir.difference(unary_union(_rap))
@@ -686,7 +686,7 @@ def ruban(ln, off, h0, h1, ep, c_, tri, col):
         col.append(np.tile(c_, (len(tri[-1]), 1)))
     return LineString(P + N_ * off)
 _bt, _bc = [], []
-for ln, w, nat, sens in axes_src:
+for ln, w, nat, sens, _ in axes_src:
     if nat not in ("Type autoroutier", "Bretelle", "Route à 2 chaussées") or ln.length < 4:
         continue
     l_ = ln if sens != "Sens inverse" else LineString(np.asarray(ln.coords)[::-1])
