@@ -52,6 +52,8 @@ def load(name):
 # ==== relief ====
 mnt = np.load(os.path.join(D, "v_mnt.npy")).astype(float)
 mns = np.load(os.path.join(D, "v_mns.npy")).astype(float)
+if mnt.min() <= 51:                                                      # altitude de base : 50 m à Canohès, sinon 5 m sous le point le plus bas
+    ZO = float(np.floor(mnt.min()) - 5)
 mnh = mns - ndi.zoom(mnt, 2, order=1)
 mnt_s = ndi.gaussian_filter(mnt, 1.5)
 GS = 7.0
@@ -96,9 +98,10 @@ def ortho_rgb(x, y, k=1):
 # ==== réseau de rues ====
 ABR = {"R": "Rue", "AV": "Avenue", "BD": "Boulevard", "CHE": "Chemin", "ALL": "Allée", "IMP": "Impasse", "PL": "Place", "RTE": "Route",
        "TRA": "Traverse", "PAS": "Passage", "LOT": "Lotissement", "SQ": "Square", "RPT": "Rond-point", "CRS": "Cours", "CAR": "Carrefour"}
-DRIVE = ("Route à 1 chaussée", "Route à 2 chaussées", "Rond-point", "Bretelle")
+DRIVE = ("Route à 1 chaussée", "Route à 2 chaussées", "Rond-point", "Bretelle", "Type autoroutier")
 G = nx.DiGraph()
 road_polys, lamps_src, mini, road_lines, cyc_lines, named = [], [], [], [], [], []
+ponts_src, plat_src = [], []                                          # tronçons en pont ; tronçons au sol (pour aplanir la chaussée)
 wbox = box(0, 0, WORLD, WORLD)
 for f in load("troncon_de_route"):
     p = f["properties"]
@@ -106,12 +109,18 @@ for f in load("troncon_de_route"):
     if not g.intersects(wbox) or p.get("etat_de_l_objet") != "En service":
         continue
     w = float(p.get("largeur_de_chaussee") or 4.0)
-    libre = p.get("acces_vehicule_leger") == "Libre"          # sinon : piste cyclable, voie piétonne, accès réservé
+    libre = p.get("acces_vehicule_leger") in ("Libre", "A péage")          # sinon : piste cyclable, voie piétonne, accès réservé
     for ln in (g.geoms if g.geom_type == "MultiLineString" else [g]):
         c = np.asarray(ln.coords)[:, :2]
         if p["nature"] in DRIVE and libre:
             road_polys.append(LineString(c).buffer(max(w, 3.0) / 2 + 0.3, cap_style=1))
-            road_lines.append((LineString(c), w))
+            niveau = int(p.get("position_par_rapport_au_sol") or 0)
+            if niveau > 0:
+                ponts_src.append((c, w))
+            elif niveau == 0:
+                plat_src.append((c, w))
+            if niveau == 0:
+                road_lines.append((LineString(c), w))
             mini.append((np.round(c, 1).tolist(), 2 if w >= 5.5 else 1))
             if p.get("prive"):
                 continue
@@ -131,13 +140,36 @@ for f in load("troncon_de_route"):
                 G.add_edge(a, b, pts=c, **kw)
             if sens in ("Double sens", "Sens inverse"):
                 G.add_edge(b, a, pts=c[::-1], **kw)
-            if p.get("urbain") and w >= 4.0 and p["nature"] == "Route à 1 chaussée":
+            if p.get("urbain") and w >= 4.0 and p["nature"] == "Route à 1 chaussée" and niveau == 0:
                 lamps_src.append((c, w))
         elif p["nature"] in DRIVE and p.get("nature_de_la_restriction") == "Piste cyclable":
             cyc_lines.append(LineString(c)); mini.append((np.round(c, 1).tolist(), 0))
         elif p["nature"] in ("Route empierrée", "Chemin"):
             mini.append((np.round(c, 1).tolist(), 0))
 roads = unary_union(road_polys)
+# chaussée à plat : le relief sous chaque route prend la hauteur de son axe, lissée sur une vingtaine de mètres
+# (sans cela, les nœuds de la grille de 7 m tombent dans les fossés et la route ondule comme un chemin de terre)
+from scipy.spatial import cKDTree
+_ax, _az, _aw = [], [], []
+for c, w in plat_src:
+    ln = LineString(c)
+    if ln.length < 1:
+        continue
+    ss = np.linspace(0, ln.length, max(2, int(ln.length / 2) + 1))
+    P = np.array([ln.interpolate(t).coords[0] for t in ss])
+    zz = ndi.map_coordinates(mnt_s, [np.clip(COTE - P[:, 1] - 0.5, 0, COTE - 1), np.clip(P[:, 0] - 0.5, 0, COTE - 1)], order=1, mode="nearest") - ZO
+    if len(zz) > 4:
+        zz = ndi.gaussian_filter1d(zz, 4, mode="nearest")
+    _ax.append(P); _az.append(zz); _aw.append(np.full(len(P), w))
+if _ax:
+    _ax, _az, _aw = np.vstack(_ax), np.concatenate(_az), np.concatenate(_aw)
+    dd, ii = cKDTree(_ax).query(np.column_stack([gX.ravel(), gY.ravel()]), distance_upper_bound=20)
+    ok = np.isfinite(dd)
+    ok[ok] = dd[ok] <= _aw[ii[ok]] / 2 + 3.5
+    Zf = Zg.ravel().copy(); Zf[ok] = _az[ii[ok]]
+    Zg = Zf.reshape(Zg.shape)
+    _gi = RegularGridInterpolator((gxs, gxs), Zg, bounds_error=False, fill_value=None)
+    log("chaussée aplanie :", int(ok.sum()), "nœuds du relief recalés sur l'axe des routes")
 log("rues:", G.number_of_edges(), "tronçons carrossables")
 nodes = np.array(list(G.nodes))
 
@@ -149,6 +181,13 @@ def nearest(X, Y):
 
 # ==== itinéraire : lotissements, mairie, écoles et stade, centre ancien, église, retour ====
 WAY = json.load(open(os.path.join(HERE, "video_route.json")))["points"]
+_dans = lambda X, Y: XO + 20 < X < XO + COTE - 20 and YO + 20 < Y < YO + COTE - 20
+if not all(_dans(*w_) for w_ in WAY):
+    # carré sans le trajet vidéo de Canohès : trajet de secours, du centre vers le point le plus éloigné du plus grand réseau connexe, puis retour
+    _cc = np.array(list(max(nx.strongly_connected_components(G), key=len)))
+    _c0 = _cc[int(np.argmin(np.hypot(_cc[:, 0] - COTE / 2, _cc[:, 1] - COTE / 2)))]
+    _c1 = _cc[int(np.argmax(np.hypot(_cc[:, 0] - _c0[0], _cc[:, 1] - _c0[1])))]
+    WAY = [[_c0[0] + XO, _c0[1] + YO], [_c1[0] + XO, _c1[1] + YO], [_c0[0] + XO, _c0[1] + YO]]
 used = {}
 
 
@@ -412,7 +451,7 @@ def prism_tris(cx, cy, z0, z1, r0, r1, n=5, rot=0.0):
 
 for r, c in pk:
     x, y = (c + 0.5) * 0.5, COTE - (r + 0.5) * 0.5
-    if not (8 < x < 1892 and 8 < y < 1892) or corridor.distance(Point(x, y)) < 1.2 or roads_large.contains(Point(x, y)):
+    if not (8 < x < COTE - 8 and 8 < y < COTE - 8) or corridor.distance(Point(x, y)) < 1.2 or roads_large.contains(Point(x, y)):
         continue
     h = float(np.clip(mnh[max(0, r - 2):r + 3, max(0, c - 2):c + 3].max(), 3.0, 22.0))
     cr = float(np.clip(dt[r, c] * 1.15, 1.2, 4.6)) * rng.uniform(0.9, 1.1)
@@ -466,7 +505,7 @@ for c, w in lamps_src:
         nrm = np.array([-d[1], d[0]]) * side
         side = -side
         pos = p + nrm * (w / 2 + 1.1)
-        if bun.contains(Point(pos)) or not (5 < pos[0] < 1895 and 5 < pos[1] < 1895) or (not GAME and route_s.distance(Point(pos)) > 220):
+        if bun.contains(Point(pos)) or not (5 < pos[0] < COTE - 5 and 5 < pos[1] < COTE - 5) or (not GAME and route_s.distance(Point(pos)) > 220):
             continue
         z = zg(*pos)
         P = box_tris([pos[0], pos[1], z + 3.2], [0.14, 0.14, 6.4]) + box_tris([pos[0] - nrm[0] * 0.7, pos[1] - nrm[1] * 0.7, z + 6.4], [0.1 + abs(nrm[0]) * 1.4, 0.1 + abs(nrm[1]) * 1.4, 0.1]) \
@@ -546,6 +585,111 @@ if tirets:
     drape(unary_union(tirets).intersection(chaussee.buffer(-0.3)), 0.075, [0.92, 0.92, 0.9])
 log("chaussée:", round(chaussee.area), "m2, trottoirs:", round(trottoir.area), "m2")
 
+# ==== ponts : tablier à la hauteur interpolée entre ses deux extrémités, garde-corps, piles ====
+def quads(A, Bq, C, Dq):
+    """Quadrilatères A-B-C-D (tableaux (n,3)) en triangles."""
+    return np.concatenate([np.stack([A, Bq, C], 1), np.stack([A, C, Dq], 1)])
+
+
+ponts_out = []
+_pl = shapely.ops.linemerge([LineString(c) for c, _ in ponts_src]) if ponts_src else None
+_pw = {}
+for c, w in ponts_src:
+    _pw[tuple(np.round(c[0], 1))] = w
+for ln in ([] if _pl is None else (_pl.geoms if hasattr(_pl, "geoms") else [_pl])):
+    if ln.length < 6:
+        continue
+    w = max([w_ for c_, w_ in ponts_src if LineString(c_).distance(ln) < 0.5] or [6.0])
+    n = max(3, int(ln.length / 2) + 1)
+    ss = np.linspace(0, ln.length, n)
+    P = np.array([ln.interpolate(t).coords[0] for t in ss])
+    za, zb = zg(*P[0]), zg(*P[-1])
+    Z = za + (zb - za) * ss / ln.length + 0.05
+    T = np.gradient(P, axis=0); T /= np.linalg.norm(T, axis=1)[:, None] + 1e-9
+    N_ = np.column_stack([-T[:, 1], T[:, 0]])
+    hw = max(w, 3.0) / 2 + 0.6
+    L3 = lambda off, dz: np.column_stack([P + N_ * off, Z + dz])
+    tri, col = [], []
+    def put_(t_, c_):
+        tri.append(t_); col.append(np.tile(c_, (len(t_), 1)))
+    put_(quads(L3(-hw, 0)[:-1], L3(hw, 0)[:-1], L3(hw, 0)[1:], L3(-hw, 0)[1:]), [0.27, 0.28, 0.30])           # chaussée du tablier
+    for sg in (-1, 1):
+        put_(quads(L3(sg * hw, 0)[:-1], L3(sg * hw, -0.9)[:-1], L3(sg * hw, -0.9)[1:], L3(sg * hw, 0)[1:]), [0.66, 0.64, 0.6])   # rive du tablier
+        for o0, o1, z0, z1 in ((hw, hw, 0, 1.05), (hw - 0.25, hw - 0.25, 0, 1.05), (hw - 0.25, hw, 1.05, 1.05)):     # garde-corps (muret béton)
+            put_(quads(L3(sg * o0, z0)[:-1], L3(sg * o1, z1)[:-1], L3(sg * o1, z1)[1:], L3(sg * o0, z0)[1:]), [0.78, 0.77, 0.74])
+    put_(quads(L3(hw, -0.9)[:-1], L3(-hw, -0.9)[:-1], L3(-hw, -0.9)[1:], L3(hw, -0.9)[1:]), [0.55, 0.54, 0.52])       # dessous
+    for t in np.arange(9.0, ln.length - 8, 16.0):                                                                     # piles
+        k = int(round(t / (ln.length / (n - 1))))
+        z0 = zg(*P[k])
+        if Z[k] - 0.9 - z0 < 2.0:
+            continue
+        ang = math.atan2(T[k, 1], T[k, 0])
+        for sg in (-1, 1):
+            cx_, cy_ = P[k] + N_[k] * sg * (hw - 1.0)
+            pt = np.array(prism_tris(cx_, cy_, z0 - 0.3, Z[k] - 0.9, 0.55, 0.55, 8, ang)).reshape(-1, 3, 3)
+            put_(pt, [0.62, 0.6, 0.57])
+    add_mesh(plain, np.concatenate(tri).astype(np.float64), np.concatenate(col))
+    ponts_out.append([np.round(np.column_stack([P, Z]), 2).tolist(), round(hw - 0.3, 2)])
+log("ponts :", len(ponts_out), "tabliers")
+
+# ==== péages (BD TOPO, équipement de transport « Péage ») : auvent, cabines, barrières ====
+peages = 0
+if os.path.exists(os.path.join(D, "equipement_de_transport.geojson")):
+    for f in load("equipement_de_transport"):
+        if f["properties"].get("nature") != "Péage":
+            continue
+        zp = loc(shape(f["geometry"])).buffer(0)
+        if zp.is_empty or not zp.intersects(wbox.buffer(-20)):
+            continue
+        dirs = []
+        for ln, w in road_lines:
+            seg = ln.intersection(zp)
+            if not seg.is_empty and seg.length > 5:
+                for q in (seg.geoms if hasattr(seg, "geoms") else [seg]):
+                    a_, b_ = np.asarray(q.coords)[0], np.asarray(q.coords)[-1]
+                    v_ = (b_ - a_) / (np.hypot(*(b_ - a_)) + 1e-9)
+                    dirs.append(v_ if (v_ @ (dirs[0] if dirs else v_)) >= 0 else -v_)
+        if not dirs:
+            continue
+        TP = np.mean(dirs, axis=0); TP /= np.hypot(*TP); N0 = np.array([-TP[1], TP[0]])
+        c0 = np.array(zp.centroid.coords[0])
+        cut = LineString([c0 - N0 * 400, c0 + N0 * 400]).intersection(zp)
+        if cut.is_empty:
+            continue
+        cut = max(cut.geoms, key=lambda q: q.length) if hasattr(cut, "geoms") else cut
+        a_, b_ = np.asarray(cut.coords)[0], np.asarray(cut.coords)[-1]
+        L_ = np.hypot(*(b_ - a_)); mid = (a_ + b_) / 2; z0 = zg(*mid)
+        ang = math.atan2(N0[1], N0[0])
+        tri, col = [], []
+        def boite(cx_, cy_, zc, sx, sy, sz, c_):
+            v = np.array(box_tris([0, 0, 0], [sx, sy, sz])).reshape(-1, 3, 3)
+            R_ = np.array([[math.cos(ang), -math.sin(ang)], [math.sin(ang), math.cos(ang)]])
+            v[:, :, :2] = v[:, :, :2] @ R_.T + [cx_, cy_]; v[:, :, 2] += zc
+            tri.append(v); col.append(np.tile(c_, (len(v), 1)))
+        # auvent sur poteaux, au-dessus de toute la largeur de la gare de péage
+        boite(mid[0], mid[1], z0 + 6.6, L_ + 4, 12, 0.7, [0.93, 0.93, 0.95])
+        boite(mid[0], mid[1], z0 + 6.2, L_ + 4.2, 12.2, 0.12, [0.15, 0.32, 0.62])
+        nb = max(2, int(L_ / 4.2))
+        for k in range(nb + 1):
+            u = -L_ / 2 + k * L_ / nb
+            px, py = mid + N0 * u
+            boite(px, py, z0 + 3.2, 0.35, 0.35, 6.4, [0.7, 0.7, 0.72])                                      # poteau
+            if 0 < k < nb + 1 and k < nb:
+                cx_, cy_ = mid + N0 * (u + L_ / nb / 2)
+            if k < nb:
+                ix, iy = mid + N0 * u
+                boite(ix, iy, z0 + 0.15, 1.1, 7.0, 0.3, [0.85, 0.82, 0.2])                                  # îlot jaune et blanc
+                boite(ix, iy, z0 + 1.6, 1.0, 2.4, 2.6, [0.9, 0.9, 0.88])                                    # cabine
+                boite(ix, iy, z0 + 2.3, 1.02, 2.0, 0.9, [0.16, 0.22, 0.28])                                 # vitres de la cabine
+                boite(ix, iy, z0 + 3.3, 0.5, 0.3, 0.3, [0.1, 0.75, 0.25] if k % 3 else [0.85, 0.12, 0.1])   # feu vert ou rouge
+                bx, by = mid + N0 * (u + 1.6) + TP * 1.0
+                boite(bx, by, z0 + 1.0, 2.6, 0.12, 0.12, [0.95, 0.2, 0.15])                                 # barrière
+        v = np.concatenate(tri)
+        # orientation : box_tris est tourné de ang (axe x de la boîte le long de N0)
+        add_mesh(plain, v.astype(np.float64), np.concatenate(col))
+        peages += 1
+log("péages :", peages)
+
 if GAME:
     log("clôtures et mobilier")
     # clôtures de jardins : limites réelles des parcelles bâties (cadastre) ; hauteur et aspect choisis au hasard
@@ -597,7 +741,7 @@ if GAME:
             continue
         X_, Y_ = TR.transform(float(nd.get("lon")), float(nd.get("lat")))
         x, y = X_ - XO, Y_ - YO
-        if not (10 < x < 1890 and 10 < y < 1890):
+        if not (10 < x < COTE - 10 and 10 < y < COTE - 10):
             continue
         hw, am = tg.get("highway"), tg.get("amenity")
         kind = None
@@ -728,7 +872,7 @@ for k in range(1, NF):
 cn = np.hypot(chx, chy); chx, chy = chx / cn, chy / cn
 tt = np.arange(NF) / FPS
 TT = NF / FPS
-LM = json.load(open(os.path.join(HERE, "video_route.json")))["reperes"]
+LM = {k_: v_ for k_, v_ in json.load(open(os.path.join(HERE, "video_route.json")))["reperes"].items() if _dans(*v_)} or {"Centre": WAY[0]}
 
 
 def t_near(X, Y):
@@ -822,7 +966,168 @@ log(f"export: {off / 1e6:.0f} Mo, {ntri} triangles")
 if GAME:
     occ = (lab > 0).reshape(COTE, 2, COTE, 2).any(axis=(1, 3))                 # emprise des bâtiments, 1 m par case, ligne 0 = nord
     np.savez_compressed(os.path.join(OUT, "extra.npz"), Zg=Zg.astype(np.float32), occ=occ)
-    json.dump(dict(named=named, gs=GS, world=WORLD, zedge=float(zedge), cote=COTE), open(os.path.join(OUT, "extra.json"), "w"))
+    # commerces (OpenStreetMap) : une enseigne sur la façade côté rue, au-dessus du rez-de-chaussée
+    PUB_AM = {"townhall", "school", "kindergarten", "college", "library"}          # lieux publics : nom affiché quand on passe devant
+    COM_AM = {"restaurant", "cafe", "bar", "pub", "fast_food", "ice_cream", "pharmacy", "bank", "post_office", "fuel", "doctors", "dentist", "car_wash"}
+    osm_r = ET.parse(os.path.join(D, "osm.xml")).getroot()
+    osm_n = {n.get("id"): (float(n.get("lon")), float(n.get("lat"))) for n in osm_r.iter("node")}
+    btree, bgeo = STRtree([b["g"] for b in B]), [b["g"] for b in B]
+    shops = []
+    for e in list(osm_r.iter("node")) + list(osm_r.iter("way")):
+        tg = {t.get("k"): t.get("v") for t in e.findall("tag")}
+        typ = tg.get("shop") or (tg.get("amenity") if tg.get("amenity") in COM_AM | PUB_AM else None) or tg.get("craft")
+        if not typ or not tg.get("name"):
+            continue
+        if e.tag == "node":
+            lo_, la_ = osm_n[e.get("id")]
+        else:
+            pts_ = [osm_n[n.get("ref")] for n in e.findall("nd") if n.get("ref") in osm_n]
+            if not pts_:
+                continue
+            lo_, la_ = np.mean(pts_, axis=0)
+        X_, Y_ = TR.transform(lo_, la_)
+        x, y = X_ - XO, Y_ - YO
+        if not (10 < x < COTE - 10 and 10 < y < COTE - 10):
+            continue
+        pt = Point(x, y)
+        _, _, _, ax_ = bord(x, y)                                             # point sur l'axe de la rue la plus proche
+        k_ = int(btree.nearest(pt))
+        bg_ = bgeo[k_]
+        if bg_.distance(pt) < 25:
+            ring = bg_.exterior if bg_.geom_type == "Polygon" else max(bg_.geoms, key=lambda q: q.area).exterior
+            f_ = np.array(ring.interpolate(ring.project(Point(ax_))).coords[0])   # point de la façade le plus proche de la rue
+            n_ = np.asarray(ax_) - f_
+            if np.hypot(*n_) < 0.5:
+                continue
+            n_ = n_ / np.hypot(*n_)
+            hb = B[k_]["eave"]
+            sx, sy = f_ + n_ * 0.12
+            z_ = zg(sx, sy) + min(3.3, max(2.2, hb - 0.7))
+            shops.append([round(float(sx), 2), round(float(sy), 2), round(float(z_), 2), round(float(math.atan2(n_[1], n_[0])), 3), tg["name"], typ, 1])
+        else:                                                                  # pas de bâtiment : totem au bord de la rue
+            n_ = np.asarray(ax_) - np.array([x, y]); d_ = np.hypot(*n_)
+            n_ = n_ / d_ if d_ > 0.5 else np.array([1.0, 0.0])
+            shops.append([round(x, 2), round(y, 2), round(zg(x, y) + 1.6, 2), round(float(math.atan2(n_[1], n_[0])), 3), tg["name"], typ, 0])
+    # deux enseignes au même endroit (plusieurs commerces à une adresse) : on les écarte le long de la façade
+    for k_, s_ in enumerate(shops):
+        voisins = sum(1 for q_ in shops[:k_] if math.hypot(q_[0] - s_[0], q_[1] - s_[1]) < 2.8)
+        if voisins:
+            dec = 3.0 * ((voisins + 1) // 2) * (1 if voisins % 2 else -1)
+            s_[0] = round(s_[0] - math.sin(s_[3]) * dec, 2); s_[1] = round(s_[1] + math.cos(s_[3]) * dec, 2)
+    log(f"commerces et lieux publics : {len(shops)} ({sum(s_[6] for s_ in shops)} sur une façade)")
+
+    # panneaux de direction : entrées de ronds-points et carrefours de routes numérotées (réseau principal sur 15 km)
+    RG = nx.Graph()
+    for f in load("r_routes"):
+        p_ = f["properties"]
+        if p_.get("acces_vehicule_leger") not in (None, "Libre") or p_.get("etat_de_l_objet") not in (None, "En service"):
+            continue
+        g_ = shape(f["geometry"])
+        for ln in (g_.geoms if hasattr(g_, "geoms") else [g_]):
+            cs = [(round(c_[0] - XO, 1), round(c_[1] - YO, 1)) for c_ in ln.coords]
+            if len(cs) < 2 or cs[0] == cs[-1]:
+                continue
+            RG.add_edge(cs[0], cs[-1], w=LineString(cs).length, rp=p_.get("nature") == "Rond-point", num=p_.get("cpx_numero") or "",
+                        cl=p_.get("cpx_classement_administratif") or "", larg=float(p_.get("largeur_de_chaussee") or 6.0), pts=cs)
+    villes = []
+    for f in load("r_villes"):
+        g_ = shape(f["geometry"])
+        c_ = g_.representative_point()
+        villes.append((f["properties"]["toponyme"], loc(g_), (c_.x - XO, c_.y - YO)))
+    vn = list(RG.nodes)
+    vxy = np.array(vn)
+    v_node = [vn[int(np.argmin(np.hypot(vxy[:, 0] - c_[0], vxy[:, 1] - c_[1])))] for _, _, c_ in villes]
+    classee = lambda d_: any(k in d_["cl"] for k in ("Départementale", "Nationale", "Autoroute"))
+
+    def cap_arete(u, v):
+        """Direction de départ de l'arête u -> v, mesurée 25 m après u."""
+        pts_ = RG[u][v]["pts"]
+        ln_ = LineString(pts_ if pts_[0] == u else pts_[::-1])
+        q_ = ln_.interpolate(min(25.0, ln_.length))
+        return math.atan2(q_.y - u[1], q_.x - u[0])
+
+    groupes, vus = [], set()
+    rp_sub = nx.Graph([(u, v) for u, v, d_ in RG.edges(data=True) if d_["rp"]])
+    for comp in nx.connected_components(rp_sub):
+        groupes.append(set(comp)); vus |= comp
+    for n_ in RG.nodes:
+        if n_ in vus or RG.degree(n_) < 3:
+            continue
+        nums = {d_["num"] for _, _, d_ in RG.edges(n_, data=True) if classee(d_) and d_["num"]}
+        if len(nums) >= 2:
+            groupes.append({n_})
+    signs = []
+    for grp in groupes:
+        cx_, cy_ = np.mean(list(grp), axis=0)
+        if not (40 < cx_ < COTE - 40 and 40 < cy_ < COTE - 40):
+            continue
+        branches = [(u, v) for u in grp for v in RG.neighbors(u) if v not in grp]
+        if len(branches) < 3:
+            continue
+        H_ = RG.copy(); H_.remove_edges_from([(u, v) for u in grp for v in RG.neighbors(u) if v in grp]); H_.add_node("S")
+        for u in grp:
+            H_.add_edge("S", u, w=0.0)
+        dist_, chem = nx.single_source_dijkstra(H_, "S", weight="w")
+        dest = {b_: [] for b_ in branches}
+        for (nom, poly, _), vnod in zip(villes, v_node):
+            if vnod not in chem or poly.contains(Point(cx_, cy_)) or len(chem[vnod]) < 3:
+                continue
+            b_ = (chem[vnod][1], chem[vnod][2])
+            if b_ in dest:
+                dest[b_].append((dist_[vnod], nom))
+        for (u, a_) in branches:                                         # un panneau par voie d'arrivée
+            d_ = RG[u][a_]
+            pts_ = d_["pts"] if d_["pts"][0] == u else d_["pts"][::-1]
+            ln_ = LineString(pts_)
+            if ln_.length < 30:
+                continue
+            p0 = np.array(ln_.interpolate(18.0).coords[0]); p1 = np.array(ln_.interpolate(17.0).coords[0])
+            dv = (p1 - p0) / np.hypot(*(p1 - p0))                         # sens de marche vers le carrefour
+            pos = p0 + np.array([dv[1], -dv[0]]) * (d_["larg"] / 2 + 1.8)    # bord droit
+            if not (10 < pos[0] < COTE - 10 and 10 < pos[1] < COTE - 10):
+                continue
+            hd = math.atan2(dv[1], dv[0])
+            lignes = []
+            for (u2, v2) in branches:
+                if (u2, v2) == (u, a_) or not dest[(u2, v2)]:
+                    continue
+                rel = (math.degrees(cap_arete(u2, v2) - hd) + 540) % 360 - 180
+                if abs(rel) > 150:                                         # demi-tour (autre chaussée d'une route à 2 voies) : pas affiché
+                    continue
+                vv = sorted(dest[(u2, v2)])[:2]
+                lignes.append([round(rel), RG[u2][v2]["num"], [[n2, max(1, round(d2 / 1000))] for d2, n2 in vv]])
+            if lignes:
+                lignes.sort(key=lambda l_: -l_[0])                          # de gauche à droite
+                signs.append([round(float(pos[0]), 2), round(float(pos[1]), 2), round(zg(*pos), 2), round(math.atan2(-dv[1], -dv[0]), 3), lignes[:3]])
+    # panneaux d'agglomération (EB10 entrée, EB20 sortie au dos) : là où une route du réseau principal franchit la limite d'une commune
+    agglo = []
+    for (u, v, d_) in RG.edges(data=True):
+        ln_ = LineString(d_["pts"])
+        for nom, poly, _ in villes:
+            fr = ln_.intersection(poly.boundary)
+            if fr.is_empty:
+                continue
+            for q in (fr.geoms if hasattr(fr, "geoms") else [fr]):
+                if q.geom_type != "Point" or not (15 < q.x < COTE - 15 and 15 < q.y < COTE - 15):
+                    continue
+                t_ = ln_.project(q)
+                a0 = np.array(ln_.interpolate(max(0, t_ - 3)).coords[0]); a1 = np.array(ln_.interpolate(min(ln_.length, t_ + 3)).coords[0])
+                dv = (a1 - a0) / (np.hypot(*(a1 - a0)) + 1e-9)
+                if poly.contains(Point(*(np.array([q.x, q.y]) - dv * 4))):
+                    dv = -dv                                                  # dv : sens de l'entrée dans la commune
+                pos = np.array([q.x, q.y]) + np.array([dv[1], -dv[0]]) * (d_["larg"] / 2 + 1.6)
+                if all(math.hypot(pos[0] - g_[0], pos[1] - g_[1]) > 25 for g_ in agglo):
+                    agglo.append([round(float(pos[0]), 2), round(float(pos[1]), 2), round(zg(*pos), 2), round(math.atan2(-dv[1], -dv[0]), 3), nom])
+    log(f"panneaux d'agglomération : {len(agglo)}")
+    signs.sort(key=lambda s_: -len(s_[4]))
+    garde = []
+    for s_ in signs:                                                      # deux panneaux à moins de 6 m : on garde le plus complet
+        if all(math.hypot(s_[0] - q_[0], s_[1] - q_[1]) > 6 for q_ in garde):
+            garde.append(s_)
+    signs = garde
+    log(f"panneaux de direction : {len(signs)} sur {len(groupes)} carrefours du réseau principal")
+    json.dump(dict(named=named, gs=GS, world=WORLD, zedge=float(zedge), cote=COTE, shops=shops, signs=signs, ponts=ponts_out, agglo=agglo, xo=XO, yo=YO,
+                   mairie=([LM["Mairie"][0] - XO, LM["Mairie"][1] - YO] if "Mairie" in LM else next(([s_[0], s_[1]] for s_ in shops if s_[5] == "townhall"), [COTE / 2, COTE / 2]))), open(os.path.join(OUT, "extra.json"), "w"))
 # plan de contrôle
 import matplotlib  # noqa: E402
 matplotlib.use("Agg")

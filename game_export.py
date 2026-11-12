@@ -41,11 +41,11 @@ for key, t in M["tiles"].items():
         ntri += len(pos) // 3
     tiles[key] = o
 Zg = E["Zg"]
-hts = put(np.clip(np.round(Zg * 100), 0, 65535).astype("<u2"))
+HSC = 100 if Zg.max() < 640 else 20                                    # hauteurs en cm (5 cm en montagne, au-delà de 640 m de dénivelé)
+hts = put(np.clip(np.round(Zg * HSC), 0, 65535).astype("<u2"))
 occ = put(np.packbits(E["occ"], axis=1))
 # départ : sur la rue la plus proche de la nouvelle mairie
-XO, YO = 685450.0, 6171750.0
-mx, my = 686223 - XO, 6172821 - YO
+mx, my = X.get("mairie", [686223 - 685450.0, 6172821 - 6171750.0])
 best = None
 for pts, k, name in X["named"]:
     p = np.asarray(pts)
@@ -56,13 +56,13 @@ for pts, k, name in X["named"]:
         u = float(np.clip(np.dot([mx - a[0], my - a[1]], d) / L / L, 0.1, 0.9))
         q = a + d * u
         dist = float(np.hypot(q[0] - mx, q[1] - my))
-        if k == 2 and (best is None or dist < best[0]):
+        if (k == 2 or not any(k_ == 2 for _, k_, _ in X["named"])) and (best is None or dist < best[0]):
             nrm = np.array([d[1], -d[0]]) / L
             best = (dist, (q + nrm * 1.4).tolist(), float(np.arctan2(d[1], d[0])), name)
 names = sorted({n for _, _, n in X["named"] if n})
 roads = [[pts, k, (names.index(n) if n else -1)] for pts, k, n in X["named"]]
 man = dict(world=W, sc=SC, ts=M["ts"], pad=M["pad"], nt=M["nt"], gs=X["gs"], gn=int(Zg.shape[0]), zedge=X["zedge"], tiles=tiles, hts=hts, occ=occ,
-           occn=X.get("cote", 1900), roads=roads, names=names, ground=M["ground"], start=dict(pos=best[1], cap=best[2], rue=best[3]), mairie=[mx, my])
+           occn=X.get("cote", 1900), **({"hsc": HSC} if HSC != 100 else {}), roads=roads, names=names, ground=M["ground"], start=dict(pos=best[1], cap=best[2], rue=best[3]), mairie=[mx, my], shops=X.get("shops", []), signs=X.get("signs", []), ponts=X.get("ponts", []), agglo=X.get("agglo", []))
 gz = gzip.compress(bytes(blob), 9)
 json.dump(dict(man=man, gz=base64.b64encode(gz).decode("ascii")), open(os.path.join(SITE, "monde.json"), "w"))
 for i in range(M["nt"]):
