@@ -549,6 +549,9 @@ over = Acc(["pos", "col"])
 
 def add_mesh(acc, tri, col):
     """tri : (N,3,3) ; col : (N,3) couleur par triangle."""
+    tri = np.asarray(tri)
+    if tri.size == 0:                                                      # rien à ajouter (bloc sans clôture, en mer...)
+        return
     cx_, cy_ = tri[:, :, 0].mean(axis=1), tri[:, :, 1].mean(axis=1)
     ti, tj = np.clip((cx_ // TS).astype(int), 0, NT - 1), np.clip((cy_ // TS).astype(int), 0, NT - 1)
     for i in range(NT):
