@@ -1,0 +1,19 @@
+name: Jeu
+# Publie le jeu (index.html et l'index des blocs) sur GitHub Pages ; les blocs sont servis par les dépôts canohes-blocs-K.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [monde.html, dept/zones.json]
+permissions: { contents: read, pages: write, id-token: write }
+jobs:
+  publier:
+    runs-on: ubuntu-latest
+    environment: { name: github-pages, url: "${{ steps.d.outputs.page_url }}" }
+    steps:
+      - uses: actions/checkout@v4
+      - run: python outils/assembler_site.py site --zones dept/zones.json
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: site }
+      - id: d
+        uses: actions/deploy-pages@v4

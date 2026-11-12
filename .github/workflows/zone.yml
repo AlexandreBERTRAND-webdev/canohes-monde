@@ -1,0 +1,79 @@
+name: Zone
+# Appelé par chaque dépôt canohes-blocs-K : calcule les blocs de la zone K sur 16 machines et les publie sur GitHub Pages.
+on:
+  workflow_call:
+    inputs:
+      zone: { type: number, required: true }
+      paquets: { type: number, default: 16 }
+jobs:
+  communs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { repository: AlexandreBERTRAND-webdev/canohes-monde }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r requirements.txt
+      - run: python prep_dept.py communs
+      - uses: actions/upload-artifact@v4
+        with: { name: communs, path: communs, retention-days: 3 }
+      - id: m
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os
+          b = json.load(open("dept/zones.json"))["listes"][int(os.environ["Z"]) - 1]; n = max(1, min(int(os.environ["N"]), len(b)))
+          print("paquets=" + json.dumps([" ".join(b[k::n]) for k in range(n)]))
+          PY
+        env: { Z: "${{ inputs.zone }}", N: "${{ inputs.paquets }}" }
+    outputs:
+      paquets: ${{ steps.m.outputs.paquets }}
+  calcul:
+    needs: communs
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        paquet: ${{ fromJson(needs.communs.outputs.paquets) }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { repository: AlexandreBERTRAND-webdev/canohes-monde }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r requirements.txt
+      - uses: actions/download-artifact@v4
+        with: { name: communs, path: communs }
+      - name: Blocs
+        run: |
+          mkdir -p sortie journaux
+          for b in $PAQUET; do
+            ix=${b%_*}; iy=${b#*_}
+            T=$(date +%s)
+            ( DONNEES=$RUNNER_TEMP/d_$b python prep_bloc.py communs $ix $iy \
+              && DONNEES=$RUNNER_TEMP/d_$b SORTIE=$RUNNER_TEMP/r_$b GAME=1 BLOC=1 python video_world.py \
+              && SORTIE=$RUNNER_TEMP/r_$b python export_bloc.py sortie $ix $iy ) > journaux/$b.txt 2>&1 \
+              && echo "$b OK $(( $(date +%s) - T )) s" || { echo "$b ECHEC"; tail -25 journaux/$b.txt; }
+            rm -rf $RUNNER_TEMP/d_$b $RUNNER_TEMP/r_$b
+          done
+        env: { PAQUET: "${{ matrix.paquet }}" }
+      - id: nom
+        run: echo "n=$(echo "$PAQUET" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+        env: { PAQUET: "${{ matrix.paquet }}" }
+      - uses: actions/upload-artifact@v4
+        with: { name: "blocs-${{ steps.nom.outputs.n }}", path: sortie, retention-days: 10 }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: "journaux-${{ steps.nom.outputs.n }}", path: journaux, retention-days: 10 }
+  publier:
+    needs: calcul
+    if: always()
+    runs-on: ubuntu-latest
+    environment: { name: github-pages, url: "${{ steps.d.outputs.page_url }}" }
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { pattern: "blocs-*", merge-multiple: true, path: site }
+      - run: touch site/.nojekyll && ls site | wc -l && du -sh site
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: site }
+      - id: d
+        uses: actions/deploy-pages@v4
