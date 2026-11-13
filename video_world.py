@@ -349,6 +349,14 @@ def skeleton_top(poly, slope, cap):
 
 PAL = np.array([[0.93, 0.87, 0.74], [0.96, 0.94, 0.88], [0.90, 0.76, 0.58], [0.94, 0.82, 0.64], [0.88, 0.68, 0.54], [0.97, 0.96, 0.93],
                 [0.83, 0.74, 0.60], [0.95, 0.86, 0.60], [0.92, 0.72, 0.62], [0.86, 0.80, 0.72], [0.98, 0.90, 0.78]])
+# style régional (styles/regions.json) : couleurs de façades, volets, clôtures, d'après le département du bloc
+_STY = json.load(open(os.path.join(HERE, "styles", "regions.json")))
+DEP = str(json.load(open(os.path.join(D, "v_bbox.json"))).get("dep", "66"))
+STYLE = next((k_ for k_, v_ in _STY.items() if not k_.startswith("_") and DEP in v_.get("departements", [])), "defaut")
+if BLOC:
+    PAL = np.array(_STY[STYLE]["facades"])
+VOLETS = _STY[STYLE]["volets"][rng.integers(len(_STY[STYLE]["volets"]))]
+CLO = np.cumsum(_STY[STYLE]["clotures"]) / sum(_STY[STYLE]["clotures"])
 
 
 class Acc:
@@ -803,7 +811,8 @@ if GAME:
         if ln.length < 2.5:
             continue
         k = rng.random()
-        hh, col_ = (1.5, [0.90, 0.87, 0.80]) if k < 0.5 else (1.8, [0.20, 0.36, 0.17]) if k < 0.8 else (1.1, [0.72, 0.70, 0.67])
+        _c1, _c2 = (CLO[0], CLO[1]) if BLOC else (0.5, 0.8)
+        hh, col_ = (1.5, [0.90, 0.87, 0.80]) if k < _c1 else (1.8, [0.20, 0.36, 0.17]) if k < _c2 else (1.1, [0.72, 0.70, 0.67])
         col_ = np.array(col_) * rng.uniform(0.9, 1.06)
         pts_ = np.array([ln.interpolate(d_).coords[0] for d_ in np.linspace(0, ln.length, max(2, int(ln.length / 4) + 1))])
         zz = zgv(pts_)
@@ -1230,7 +1239,7 @@ if GAME:
             garde.append(s_)
     signs = garde
     log(f"panneaux de direction : {len(signs)} sur {len(groupes)} carrefours du réseau principal")
-    json.dump(dict(named=named, gs=GS, world=WORLD, zedge=float(zedge), cote=COTE, zo=ZO, villes=[[n_, np.round(np.asarray((q_.exterior if q_.geom_type == "Polygon" else max(q_.geoms, key=lambda r_: r_.area).exterior).simplify(4).coords), 1).tolist()] for n_, p_, _ in villes for q_ in [p_.intersection(wbox.buffer(5))] if not q_.is_empty and q_.geom_type in ("Polygon", "MultiPolygon")], shops=shops, signs=signs, ponts=ponts_out, agglo=agglo, xo=XO, yo=YO,
+    json.dump(dict(named=named, gs=GS, world=WORLD, zedge=float(zedge), cote=COTE, zo=ZO, style=STYLE, volets=VOLETS, villes=[[n_, np.round(np.asarray((q_.exterior if q_.geom_type == "Polygon" else max(q_.geoms, key=lambda r_: r_.area).exterior).simplify(4).coords), 1).tolist()] for n_, p_, _ in villes for q_ in [p_.intersection(wbox.buffer(5))] if not q_.is_empty and q_.geom_type in ("Polygon", "MultiPolygon")], shops=shops, signs=signs, ponts=ponts_out, agglo=agglo, xo=XO, yo=YO,
                    mairie=([LM["Mairie"][0] - XO, LM["Mairie"][1] - YO] if "Mairie" in LM else next(([s_[0], s_[1]] for s_ in shops if s_[5] == "townhall"), [COTE / 2, COTE / 2]))), open(os.path.join(OUT, "extra.json"), "w"))
 # plan de contrôle
 import matplotlib  # noqa: E402

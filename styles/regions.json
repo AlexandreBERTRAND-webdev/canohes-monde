@@ -1,0 +1,136 @@
+{
+  "_lisez_moi": "Couleurs des maisons par région. facades : enduits ou matériaux dominants (RGB 0-1), tirés au sort maison par maison. volets : couleurs des volets peints sur la texture des fenêtres. clotures : parts de mur clair, haie et muret. departements : codes INSEE. Ajouter une région ici suffit, sans toucher au code.",
+  "roussillon": {
+    "nom": "Roussillon et Catalogne",
+    "facades": [[0.93, 0.83, 0.66], [0.95, 0.88, 0.76], [0.91, 0.74, 0.60], [0.94, 0.80, 0.67], [0.88, 0.67, 0.55], [0.96, 0.93, 0.86], [0.90, 0.78, 0.58]],
+    "volets": ["#5f8a7a", "#4f6f8f", "#7a3b3b", "#7a8f86"],
+    "clotures": [0.55, 0.25, 0.20],
+    "departements": ["66"]
+  },
+  "languedoc": {
+    "nom": "Languedoc",
+    "facades": [[0.92, 0.86, 0.74], [0.95, 0.91, 0.82], [0.88, 0.80, 0.66], [0.94, 0.85, 0.72], [0.90, 0.84, 0.76]],
+    "volets": ["#7f97a3", "#8a9a7a", "#a3a3a0", "#6f7f8f"],
+    "clotures": [0.55, 0.25, 0.20],
+    "departements": ["11", "34", "30", "48", "12"]
+  },
+  "provence": {
+    "nom": "Provence et Côte d'Azur",
+    "facades": [[0.93, 0.78, 0.52], [0.91, 0.66, 0.52], [0.95, 0.84, 0.66], [0.90, 0.72, 0.62], [0.96, 0.90, 0.78], [0.87, 0.60, 0.48]],
+    "volets": ["#7f9fbf", "#8fae8a", "#a3bfbf", "#5f7f9f"],
+    "clotures": [0.60, 0.25, 0.15],
+    "departements": ["13", "83", "84", "04", "06", "05"]
+  },
+  "corse": {
+    "nom": "Corse",
+    "facades": [[0.74, 0.71, 0.66], [0.82, 0.76, 0.66], [0.88, 0.80, 0.68], [0.70, 0.66, 0.60], [0.92, 0.86, 0.76]],
+    "volets": ["#6f8f7a", "#7f8f9f", "#8a8a80"],
+    "clotures": [0.30, 0.20, 0.50],
+    "departements": ["2A", "2B"]
+  },
+  "toulouse_brique": {
+    "nom": "Toulousain et Midi toulousain (brique rose)",
+    "facades": [[0.80, 0.52, 0.42], [0.84, 0.58, 0.46], [0.76, 0.48, 0.40], [0.92, 0.84, 0.72], [0.86, 0.62, 0.50]],
+    "volets": ["#7f9fbf", "#8fa38a", "#a3a3a0"],
+    "clotures": [0.50, 0.30, 0.20],
+    "departements": ["31", "82", "81", "32", "09", "65"]
+  },
+  "pays_basque_bearn": {
+    "nom": "Pays basque et Béarn",
+    "facades": [[0.97, 0.97, 0.95], [0.96, 0.95, 0.92], [0.95, 0.94, 0.90]],
+    "volets": ["#9a1f1f", "#1f5a3a", "#7a1f1f"],
+    "clotures": [0.40, 0.45, 0.15],
+    "departements": ["64"]
+  },
+  "aquitaine": {
+    "nom": "Gironde, Landes, Périgord",
+    "facades": [[0.92, 0.86, 0.72], [0.95, 0.90, 0.80], [0.88, 0.80, 0.64], [0.86, 0.78, 0.62]],
+    "volets": ["#a3a3a0", "#7f97a3", "#8a9a7a", "#5f5f6f"],
+    "clotures": [0.40, 0.45, 0.15],
+    "departements": ["33", "40", "47", "24", "46", "19", "87", "23", "16", "17", "79", "86"]
+  },
+  "bretagne": {
+    "nom": "Bretagne",
+    "facades": [[0.62, 0.62, 0.60], [0.95, 0.95, 0.93], [0.70, 0.69, 0.66], [0.93, 0.92, 0.88], [0.66, 0.64, 0.60]],
+    "volets": ["#1f3a6f", "#2f5f7f", "#f2f2ee", "#3f6f5f"],
+    "clotures": [0.20, 0.45, 0.35],
+    "departements": ["29", "22", "56", "35", "44"]
+  },
+  "normandie": {
+    "nom": "Normandie (colombages, brique, silex)",
+    "facades": [[0.93, 0.89, 0.78], [0.72, 0.42, 0.34], [0.90, 0.86, 0.76], [0.78, 0.50, 0.40], [0.95, 0.93, 0.86]],
+    "volets": ["#2f4f3f", "#f2f2ee", "#5f3f2f"],
+    "clotures": [0.15, 0.70, 0.15],
+    "departements": ["14", "50", "61", "27", "76"]
+  },
+  "nord_brique": {
+    "nom": "Nord, Picardie (brique rouge)",
+    "facades": [[0.62, 0.32, 0.26], [0.68, 0.36, 0.28], [0.56, 0.28, 0.24], [0.92, 0.90, 0.84]],
+    "volets": ["#f2f2ee", "#2f2f2f", "#3f5f4f"],
+    "clotures": [0.30, 0.50, 0.20],
+    "departements": ["59", "62", "80", "02", "60"]
+  },
+  "ile_de_france": {
+    "nom": "Paris et Île-de-France (pierre de taille, zinc)",
+    "facades": [[0.90, 0.86, 0.76], [0.93, 0.90, 0.82], [0.86, 0.82, 0.72], [0.95, 0.93, 0.88], [0.82, 0.78, 0.70]],
+    "volets": ["#d8d6cf", "#8a8d90", "#f2f2ee"],
+    "clotures": [0.60, 0.30, 0.10],
+    "departements": ["75", "92", "93", "94", "77", "78", "91", "95"]
+  },
+  "val_de_loire": {
+    "nom": "Val de Loire, Centre (tuffeau, ardoise)",
+    "facades": [[0.95, 0.93, 0.86], [0.92, 0.90, 0.82], [0.90, 0.86, 0.76], [0.96, 0.95, 0.90]],
+    "volets": ["#a3a3a0", "#7f97a3", "#d8d6cf"],
+    "clotures": [0.50, 0.35, 0.15],
+    "departements": ["45", "41", "37", "18", "36", "28", "49", "72", "53", "85"]
+  },
+  "est": {
+    "nom": "Champagne, Lorraine",
+    "facades": [[0.92, 0.89, 0.80], [0.86, 0.84, 0.78], [0.94, 0.90, 0.80], [0.82, 0.80, 0.74]],
+    "volets": ["#6f4f3f", "#a3a3a0", "#5f6f5f"],
+    "clotures": [0.40, 0.45, 0.15],
+    "departements": ["51", "08", "10", "52", "54", "55", "57", "88"]
+  },
+  "alsace": {
+    "nom": "Alsace (enduits vifs, colombages)",
+    "facades": [[0.95, 0.84, 0.50], [0.92, 0.66, 0.62], [0.70, 0.80, 0.86], [0.78, 0.86, 0.70], [0.96, 0.92, 0.82], [0.93, 0.74, 0.50]],
+    "volets": ["#6f4f2f", "#2f5f3f", "#9a1f1f"],
+    "clotures": [0.30, 0.50, 0.20],
+    "departements": ["67", "68"]
+  },
+  "bourgogne_franche_comte": {
+    "nom": "Bourgogne, Franche-Comté (pierre blonde)",
+    "facades": [[0.90, 0.84, 0.70], [0.94, 0.90, 0.80], [0.86, 0.80, 0.66], [0.92, 0.88, 0.78]],
+    "volets": ["#4f6f4f", "#6f4f3f", "#a3a3a0"],
+    "clotures": [0.50, 0.35, 0.15],
+    "departements": ["21", "71", "58", "89", "39", "25", "70", "90"]
+  },
+  "rhone_lyonnais": {
+    "nom": "Lyonnais, Beaujolais (pierres dorées)",
+    "facades": [[0.90, 0.78, 0.56], [0.94, 0.86, 0.70], [0.92, 0.82, 0.66], [0.95, 0.92, 0.84]],
+    "volets": ["#5f7f5f", "#a3a3a0", "#7f6f5f"],
+    "clotures": [0.50, 0.35, 0.15],
+    "departements": ["69", "01", "42", "07", "26"]
+  },
+  "auvergne": {
+    "nom": "Auvergne (pierre volcanique)",
+    "facades": [[0.46, 0.44, 0.42], [0.56, 0.54, 0.50], [0.86, 0.82, 0.74], [0.50, 0.48, 0.45]],
+    "volets": ["#6f4f3f", "#4f5f4f", "#a3a3a0"],
+    "clotures": [0.20, 0.40, 0.40],
+    "departements": ["63", "15", "43", "03"]
+  },
+  "alpes": {
+    "nom": "Alpes et Savoie (pierre et bois)",
+    "facades": [[0.80, 0.78, 0.74], [0.62, 0.48, 0.34], [0.90, 0.88, 0.82], [0.70, 0.56, 0.40]],
+    "volets": ["#6f4f2f", "#5f3f2f", "#4f5f4f"],
+    "clotures": [0.20, 0.40, 0.40],
+    "departements": ["73", "74", "38"]
+  },
+  "defaut": {
+    "nom": "France (par défaut)",
+    "facades": [[0.93, 0.87, 0.74], [0.96, 0.94, 0.88], [0.90, 0.76, 0.58], [0.94, 0.82, 0.64], [0.97, 0.96, 0.93]],
+    "volets": ["#7a8f86"],
+    "clotures": [0.50, 0.30, 0.20],
+    "departements": []
+  }
+}

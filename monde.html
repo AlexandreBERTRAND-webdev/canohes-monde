@@ -178,12 +178,12 @@ let sky, monts;
   const gm = new THREE.BufferGeometry(); gm.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); gm.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   monts = new THREE.Mesh(gm, new THREE.MeshBasicMaterial({ vertexColors: true, fog: false, side: THREE.DoubleSide, depthTest: false, depthWrite: false })); monts.renderOrder = -1; scene.add(monts);
 }
-function facade() {
+function facade(volets = '#7a8f86') {
   const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
   x.fillStyle = '#ffffff'; x.fillRect(0, 0, 128, 128);
   const g = x.createLinearGradient(0, 0, 0, 128); g.addColorStop(0, 'rgba(0,0,0,0.03)'); g.addColorStop(1, 'rgba(0,0,0,0.10)'); x.fillStyle = g; x.fillRect(0, 0, 128, 128);
   x.fillStyle = 'rgba(0,0,0,0.10)'; x.fillRect(0, 124, 128, 4);
-  x.fillStyle = '#7a8f86'; x.fillRect(30, 30, 14, 62); x.fillRect(84, 30, 14, 62);
+  x.fillStyle = volets; x.fillRect(30, 30, 14, 62); x.fillRect(84, 30, 14, 62);
   x.fillStyle = 'rgba(0,0,0,.18)'; for (let y = 34; y < 92; y += 6) { x.fillRect(30, y, 14, 1.5); x.fillRect(84, y, 14, 1.5); }
   x.fillStyle = '#e9e6df'; x.fillRect(44, 28, 40, 66);
   const gl = x.createLinearGradient(44, 30, 84, 92); gl.addColorStop(0, '#2b3d4f'); gl.addColorStop(1, '#52697b'); x.fillStyle = gl; x.fillRect(47, 31, 34, 60);
@@ -198,6 +198,8 @@ const detail = (() => { const c = document.createElement('canvas'); c.width = c.
 const grain = m => { m.onBeforeCompile = sh => { sh.uniforms.detailMap = { value: detail };
   sh.fragmentShader = 'uniform sampler2D detailMap;\n' + sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n diffuseColor.rgb *= (0.93 + 0.14 * texture2D(detailMap, vMapUv * 60.0).r) * (0.95 + 0.10 * texture2D(detailMap, vMapUv * 11.0).g);'); }; return m; };
 const mWall = new THREE.MeshLambertMaterial({ map: facade(), vertexColors: true, flatShading: true });
+const MURS = new Map();                                            // une texture de façade par couleur de volets (style régional)
+const murPour = v => { if (!v) return mWall; if (!MURS.has(v)) MURS.set(v, new THREE.MeshLambertMaterial({ map: facade(v), vertexColors: true, flatShading: true })); return MURS.get(v); };
 const mPlain = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide });
 const mArbre = new THREE.MeshLambertMaterial({ vertexColors: true });
 // arbres arrondis : on soude les sommets communs pour lisser l'éclairage (plus de facettes visibles)
@@ -370,7 +372,7 @@ async function charge(cle) {
     add(gt, grain(new THREE.MeshLambertMaterial(tex ? { map: tex, side: THREE.DoubleSide } : { color: 0x9b9a7c, side: THREE.DoubleSide })), false, true);
     for (const t of Object.values(M.tiles)) {
       if (t.roofs) add(geom(t.roofs), t.roofs.col ? mToit : mPlain, true, true);
-      if (t.walls) add(geom(t.walls), mWall, true, true);
+      if (t.walls) add(geom(t.walls), murPour(M.volets), true, true);
       for (const nm of ['plain', 'trees', 'lamps']) if (t[nm]) add(nm === 'trees' ? lisse(geom(t[nm])) : geom(t[nm]), nm === 'trees' ? mArbre : mPlain, true, nm === 'plain');
       if (t.over) add(geom(t.over), mOver, false, true);
     }
@@ -381,7 +383,7 @@ async function charge(cle) {
 const MANQUE = new Set();
 function decharge(cle) { const b = BLOCS.get(cle); BLOCS.delete(cle); if (!b) return;
   for (const [ix, k, v] of b.cles) { const t = ix.get(k); if (t) { t.delete(v); if (!t.size) ix.delete(k); } }
-  if (b.group) { monde.remove(b.group); b.group.traverse(o => { if (o.geometry) o.geometry.dispose(); for (const m of [].concat(o.material || [])) { if (m.map && m !== mWall) m.map.dispose(); if (![mWall, mPlain, mArbre, mOver, mToit, mDos, mPoteau].includes(m)) m.dispose(); } }); } }
+  if (b.group) { monde.remove(b.group); b.group.traverse(o => { if (o.geometry) o.geometry.dispose(); for (const m of [].concat(o.material || [])) { if (m.map && m !== mWall && ![...MURS.values()].includes(m)) m.map.dispose(); if (![mWall, mPlain, mArbre, mOver, mToit, mDos, mPoteau, ...MURS.values()].includes(m)) m.dispose(); } }); } }
 let enCours = null;
 function planifie() {
   const ci = Math.floor((S.x + OX) / C), cj = Math.floor((S.y + OY) / C), hx = Math.cos(S.cap), hy = Math.sin(S.cap), voulu = [];
