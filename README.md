@@ -1,6 +1,6 @@
-# Balade en Roussillon
+# Metaverse France
 
-Jeu de conduite en 3D dans le navigateur, sur les Pyrénées-Orientales, construit uniquement à partir de données ouvertes. Aucune IA ne tourne pendant le jeu.
+Jeu de conduite (et de vol à basse altitude) en 3D dans le navigateur, commencé sur les Pyrénées-Orientales, construit uniquement à partir de données ouvertes. Aucune IA ne tourne pendant le jeu.
 
 ## Comment c'est fait
 

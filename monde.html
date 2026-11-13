@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Balade en Roussillon</title>
+<title>Metaverse France</title>
 <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -50,6 +50,9 @@ body.tactile .pedale{display:flex} body.tactile #aide{bottom:auto; top:50%}
 #recherche button{padding:9px 12px; border-radius:8px; border:0; background:var(--accent); color:#111; font:700 14px var(--texte); cursor:pointer} #fermerRech{background:rgba(255,255,255,.18)!important; color:var(--encre)!important}
 #resRech{list-style:none; margin:8px 0 0; padding:0; max-height:50vh; overflow:auto} #resRech li button{width:100%; text-align:left; background:transparent!important; color:var(--encre)!important; font-weight:500!important; padding:9px 8px!important; border-bottom:1px solid rgba(255,255,255,.12)!important; border-radius:0!important}
 #resRech li button:hover{background:rgba(255,255,255,.1)!important} #resRech .hors{opacity:.55}
+#vol{position:fixed; left:14px; top:320px; font:600 13px var(--texte); color:var(--encre); background:var(--panneau); border:1px solid rgba(255,255,255,.35); border-radius:9px; padding:8px 11px; cursor:pointer} #vol[aria-pressed="true"]{background:var(--accent); color:#111}
+#monter{right:calc(var(--cote) + 96px + env(safe-area-inset-right)); bottom:calc(var(--bas) + 96px + env(safe-area-inset-bottom))} #descendre{right:calc(var(--cote) + 96px + env(safe-area-inset-right))}
+body.tactile.envol #monter, body.tactile.envol #descendre{display:flex}
 #comptebtn{position:fixed; left:14px; top:280px; font:600 13px var(--texte); color:#111; background:var(--accent); border:0; border-radius:9px; padding:8px 11px; cursor:pointer}
 .voile{position:fixed; inset:0; background:rgba(10,14,20,.6); display:flex; align-items:center; justify-content:center; padding:16px; z-index:10}
 .voile[hidden]{display:none}
@@ -74,7 +77,7 @@ body.tactile #credit{display:none}
 <button id="vmax" type="button" aria-label="Vitesse maximale">Max 200</button>
 <div id="infos"><div id="rue"></div><div id="ville"></div><div id="vit"><span id="kmh">0</span><small>KM/H</small></div></div>
 <div id="lieu" aria-live="polite"></div>
-<div id="aide">Clique sur le jeu, puis flèches ou ZQSD pour conduire. Espace pour freiner, R pour revenir au départ, V pour la vitesse maximale</div>
+<div id="aide">Clique sur le jeu, puis flèches ou ZQSD pour conduire. Espace pour freiner, R pour revenir au départ, V pour la vitesse maximale, F pour voler (E monter, C descendre)</div>
 <button class="pedale" id="gauche" type="button" aria-label="Tourner à gauche">◀</button>
 <button class="pedale" id="droite" type="button" aria-label="Tourner à droite">▶</button>
 <button class="pedale" id="gaz" type="button" aria-label="Accélérer">▲</button>
@@ -83,6 +86,9 @@ body.tactile #credit{display:none}
 <button id="aller" type="button">Aller à une adresse</button>
 <div id="recherche" role="dialog" aria-label="Aller à une adresse" hidden><form id="fRech"><input id="qRech" type="search" placeholder="Adresse, commune, lieu… dans les Pyrénées-Orientales" autocomplete="off" aria-label="Adresse"><button type="submit">Chercher</button><button type="button" id="fermerRech" aria-label="Fermer">✕</button></form><ul id="resRech"></ul></div>
 <button id="comptebtn" type="button">Mes stats</button>
+<button id="vol" type="button" aria-pressed="false">✈ Vol</button>
+<button class="pedale" id="monter" type="button" aria-label="Monter" hidden>⤒</button>
+<button class="pedale" id="descendre" type="button" aria-label="Descendre" hidden>⤓</button>
 <div class="voile" id="vCompte" hidden><div class="boite" role="dialog" aria-modal="true" aria-labelledby="tCompte">
   <h2 id="tCompte">Crée ton compte</h2>
   <p id="introCompte">Le jeu est gratuit. Pour continuer à rouler, crée ton compte en une minute : tu verras tes stats, celles des autres joueurs et leurs routes.</p>
@@ -101,7 +107,7 @@ body.tactile #credit{display:none}
   <div class="actions"><button type="button" class="second" id="fermerStats">Fermer</button></div>
 </div></div>
 <div id="credit">Données IGN : BD TOPO, LiDAR HD, BD ORTHO, cadastre · © contributeurs OpenStreetMap</div>
-<div id="charge"><h1>ROUSSILLON</h1><p id="etape">Chargement…</p><div id="barre"><b></b></div></div>
+<div id="charge"><h1>METAVERSE FRANCE</h1><p id="etape">Chargement…</p><div id="barre"><b></b></div></div>
 <script type="importmap">__IMPORTMAP__</script>
 <script defer src="https://flux.customs-toolbox.com/script.js" data-website-id="629d4c48-e3dc-4308-9f97-c43316c2f989"></script>
 <script type="module">
@@ -375,6 +381,19 @@ const car = new THREE.Group();
   car.rotation.order = 'YZX'; scene.add(car); }
 
 
+// petit avion du mode vol
+const avion = new THREE.Group();
+{ const blanc = new THREE.MeshLambertMaterial({ color: 0xf2f2ee }), rouge = new THREE.MeshLambertMaterial({ color: 0xc8161f }), verre = new THREE.MeshLambertMaterial({ color: 0x1a2530 });
+  const B = (w, h, d, m, x, y, z) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.castShadow = OMBRES; avion.add(o); };
+  avion.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.35, 7, 12).rotateZ(Math.PI / 2), blanc), { castShadow: OMBRES }));
+  B(1.6, 0.55, 0.9, verre, 1.6, 0.45, 0); B(1.6, 0.12, 10, blanc, 0.6, 0.35, 0); B(0.9, 0.1, 10.02, rouge, 0.6, 0.36, 0);
+  B(0.9, 1.4, 0.1, rouge, -3.2, 0.8, 0); B(0.8, 0.08, 3.4, blanc, -3.2, 0.2, 0); B(0.15, 1.8, 0.12, new THREE.MeshLambertMaterial({ color: 0x333333 }), 3.6, 0, 0);
+  avion.rotation.order = 'YZX'; avion.visible = false; scene.add(avion); }
+el('vol').addEventListener('click', () => { basculeVol(); canvas.focus(); });
+addEventListener('keydown', e => { if (!saisie(e) && e.code === 'KeyF') basculeVol(); });
+function basculeVol() { VOL = !VOL; el('vol').setAttribute('aria-pressed', VOL); document.body.classList.toggle('envol', VOL); car.visible = !VOL; avion.visible = VOL;
+  for (const id of ['monter', 'descendre']) el(id).hidden = !VOL;
+  if (VOL) { S.alt = 60; S.v = Math.min(Math.abs(S.v), 25); } else { S.v = 0; S.z = undefined; } }
 // ── chargement et déchargement des blocs ──
 const teinte = (img, n) => { const c = document.createElement('canvas'); c.width = c.height = n; const k = c.getContext('2d'); k.imageSmoothingQuality = 'high';
   k.drawImage(img, 0, 0, n, n); k.globalCompositeOperation = 'saturation'; k.fillStyle = 'hsla(0,0%,50%,.25)'; k.fillRect(0, 0, n, n);
@@ -438,9 +457,9 @@ function planifie() {
 // ── conduite ──
 const S = { x: DEP[0] - OX, y: DEP[1] - OY, cap: +(prm.get('cap') || 0), v: 0, camCap: +(prm.get('cap') || 0) };
 let DEPL = [DEP[0] - OX, DEP[1] - OY, S.cap];
-const depart = () => { [S.x, S.y, S.cap] = DEPL; S.camCap = S.cap; S.v = 0; S.z = S.cz = undefined; };
+const depart = () => { if (typeof VOL !== 'undefined' && VOL) basculeVol(); [S.x, S.y, S.cap] = DEPL; S.camCap = S.cap; S.v = 0; S.z = S.cz = undefined; };
 const touches = new Set(); const cmd = { gaz: 0, dir: 0, frein: false };
-const CLES = { ArrowUp: 'h', KeyW: 'h', KeyZ: 'h', ArrowDown: 'b', KeyS: 'b', ArrowLeft: 'g', KeyA: 'g', KeyQ: 'g', ArrowRight: 'd', KeyD: 'd', Space: 'f' };
+const CLES = { KeyE: 'm', KeyC: 'n', PageUp: 'm', PageDown: 'n', ArrowUp: 'h', KeyW: 'h', KeyZ: 'h', ArrowDown: 'b', KeyS: 'b', ArrowLeft: 'g', KeyA: 'g', KeyQ: 'g', ArrowRight: 'd', KeyD: 'd', Space: 'f' };
 const saisie = e => e.target && e.target.closest && e.target.closest('input, textarea, select');
 addEventListener('keydown', e => { if (saisie(e)) return; if (e.code === 'KeyR') depart(); const k = CLES[e.code]; if (k) { touches.add(k); e.preventDefault(); masqueAide(); } });
 addEventListener('keyup', e => { const k = CLES[e.code]; if (k) touches.delete(k); });
@@ -448,14 +467,14 @@ addEventListener('blur', () => touches.clear());
 el('retour').addEventListener('click', () => { depart(); canvas.focus(); });
 let aideVue = false; const masqueAide = () => { if (!aideVue) { aideVue = true; el('aide').style.opacity = 0; } };
 // commandes tactiles
-const ped = { gaz: false, frein: false, g: false, d: false };
+const ped = { gaz: false, frein: false, g: false, d: false, m: false, n: false };
 // pas de zoom par erreur : Safari ignore user-scalable=no, on bloque le pincement et le double tap ici
 for (const t of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(t, e => e.preventDefault());
 document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
 let dernierTap = 0;
 document.addEventListener('touchend', e => { const t = Date.now(); if (t - dernierTap < 350 && !e.target.closest('#retour')) e.preventDefault(); dernierTap = t; }, { passive: false });
 document.addEventListener('dblclick', e => e.preventDefault());
-for (const [id, k] of [['gaz', 'gaz'], ['frein', 'frein'], ['gauche', 'g'], ['droite', 'd']]) { const b = el(id);
+for (const [id, k] of [['gaz', 'gaz'], ['frein', 'frein'], ['gauche', 'g'], ['droite', 'd'], ['monter', 'm'], ['descendre', 'n']]) { const b = el(id);
   b.addEventListener('pointerdown', e => { ped[k] = true; try { b.setPointerCapture(e.pointerId); } catch (_) {} b.classList.add('actif'); masqueAide(); e.preventDefault(); });
   const fin = () => { ped[k] = false; b.classList.remove('actif'); }; b.addEventListener('pointerup', fin); b.addEventListener('pointercancel', fin); }
 addEventListener('contextmenu', e => e.preventDefault());
@@ -466,7 +485,18 @@ const majVmax = () => { el('vmax').textContent = 'Max ' + vmaxKmh; };
 const changeVmax = () => { vmaxKmh = VITESSES[(VITESSES.indexOf(vmaxKmh) + 1) % VITESSES.length]; majVmax(); try { localStorage.setItem('vmax', vmaxKmh); } catch (_) {} };
 majVmax(); el('vmax').addEventListener('click', () => { changeVmax(); canvas.focus(); }); addEventListener('keydown', e => { if (!saisie(e) && e.code === 'KeyV') changeVmax(); });
 let VMAX = vmaxKmh / 3.6; const VREC = -7, ACCEL = 9.5;
+// ── vol à basse altitude : petit avion, 90 km/h au plus, entre 15 et 300 m au-dessus du sol, sans collisions ──
+let VOL = false; S.alt = 60;
+function vole(dt) {
+  const gaz = (touches.has('h') || ped.gaz ? 1 : 0) - (touches.has('b') || ped.frein ? 1 : 0), dir = (touches.has('g') || ped.g ? 1 : 0) - (touches.has('d') || ped.d ? 1 : 0);
+  const mont = (touches.has('m') || ped.m ? 1 : 0) - (touches.has('n') || ped.n ? 1 : 0);
+  cmd.dir += (dir - cmd.dir) * Math.min(1, dt * 3);
+  S.v += (gaz > 0 ? 6 : gaz < 0 ? -8 : -0.6) * dt; S.v = Math.max(0, Math.min(25, S.v));
+  S.cap += cmd.dir * 0.75 * dt; S.alt = Math.max(15, Math.min(300, S.alt + mont * 12 * dt));
+  S.x += Math.cos(S.cap) * S.v * dt; S.y += Math.sin(S.cap) * S.v * dt;
+}
 function avance(dt) {
+  if (VOL) return vole(dt);
   const gaz = (touches.has('h') || ped.gaz ? 1 : 0) - (touches.has('b') || ped.frein ? 1 : 0), frein = touches.has('f');
   const dir = (touches.has('g') || ped.g ? 1 : 0) - (touches.has('d') || ped.d ? 1 : 0);
   cmd.dir += (dir - cmd.dir) * Math.min(1, dt * (tactile ? 4 : 6));
@@ -540,17 +570,18 @@ function boucle(t) {
   distM += dd; if (distM >= 1000) { distM -= 1000; kmEnv++; stat('km', { bloc: cleBloc(S.x, S.y), total: kmEnv }); }
   if (Math.hypot(S.x - F.x, S.y - F.y) > 600) { F.x = Math.round(S.x / 100) * 100; F.y = Math.round(S.y / 100) * 100; S.cz = undefined; }   // origine flottante
   monde.position.set(-F.x, -(0), F.y);
-  const cx = Math.cos(S.cap), cy = Math.sin(S.cap), zb = hauteur(S.x, S.y, S.z);
+  const cx = Math.cos(S.cap), cy = Math.sin(S.cap), zb = VOL ? sol(S.x, S.y) + S.alt : hauteur(S.x, S.y, S.z);
   const pb = Math.atan2(hauteur(S.x + cx * 5, S.y + cy * 5, zb) - hauteur(S.x - cx * 5, S.y - cy * 5, zb), 10);
   if (S.z === undefined || Math.abs(zb - S.z) > 3) { S.z = zb; S.p = pb; }
   S.z += (zb - S.z) * Math.min(1, dt * 5); S.p += (pb - S.p) * Math.min(1, dt * 3);
   const z = S.z;
   car.position.copy(V3(S.x, S.y, z + 0.05)); car.rotation.set(-cmd.dir * Math.min(1, Math.abs(S.v) / 14) * 0.04, S.cap, S.p);
+  if (VOL) { avion.position.copy(V3(S.x, S.y, z)); avion.rotation.set(-cmd.dir * 0.45, S.cap, 0.05); }
   let dc = S.cap - S.camCap; dc = Math.atan2(Math.sin(dc), Math.cos(dc)); S.camCap += dc * Math.min(1, dt * 3.2);
-  const bx = Math.cos(S.camCap), by = Math.sin(S.camCap); let D = (innerWidth < innerHeight ? 10 : 8.2) + Math.min(4, Math.abs(S.v) / 14);
-  while (D > 3 && mur(S.x - bx * D, S.y - by * D) && blocEn(S.x - bx * D, S.y - by * D)) D -= 0.6;
+  const bx = Math.cos(S.camCap), by = Math.sin(S.camCap); let D = VOL ? 22 : (innerWidth < innerHeight ? 10 : 8.2) + Math.min(4, Math.abs(S.v) / 14);
+  while (!VOL && D > 3 && mur(S.x - bx * D, S.y - by * D) && blocEn(S.x - bx * D, S.y - by * D)) D -= 0.6;
   const px = S.x - bx * D, py = S.y - by * D;
-  S.cz = S.cz === undefined ? z + 3.3 : S.cz + (Math.max(z + 3.3, sol(px, py) + 1.6) - S.cz) * Math.min(1, dt * 4);
+  const hc = VOL ? 7 : 3.3; S.cz = S.cz === undefined ? z + hc : S.cz + (Math.max(z + hc, sol(px, py) + 1.6) - S.cz) * Math.min(1, dt * 4);
   camera.position.copy(V3(px, py, S.cz)); camera.lookAt(V3(S.x + bx * 6, S.y + by * 6, z + 1.2));
   sky.position.copy(camera.position); monts.position.set(camera.position.x, camera.position.y - 0.08, camera.position.z);
   monts.rotation.y = -((Math.atan2(CANIGOU[0] - S.x, CANIGOU[1] - S.y) * 180 / Math.PI) - 244.5) * Math.PI / 180;
