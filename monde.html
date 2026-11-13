@@ -484,9 +484,9 @@ let t0 = performance.now(), n = 0, nomAff = null, lieuAff = null, villeAff = nul
 stat('partie', { bloc: cleBloc(S.x, S.y) });
 function boucle(t) {
   requestAnimationFrame(boucle);
-  let dt = Math.min(0.05, (t - t0) / 1000); t0 = t; VMAX = vmaxKmh / 3.6;
+  const dtr = Math.min(1, Math.max(0, (t - t0) / 1000)); let dt = Math.min(0.05, dtr); t0 = t; VMAX = vmaxKmh / 3.6;   // dtr : temps réel (onglet en arrière-plan ignoré)
   if (PAUSE) { renderer.render(scene, camera); return; }
-  if (!JETON) { tempsLibre += dt; if (n % 120 === 0) LS.set('tempsLibre', tempsLibre.toFixed(0)); if (tempsLibre >= LIBRE) { LS.set('tempsLibre', tempsLibre.toFixed(0)); ouvrirCompte(true); return; } }
+  if (!JETON) { tempsLibre += dtr; if (n % 120 === 0) LS.set('tempsLibre', tempsLibre.toFixed(0)); if (tempsLibre >= LIBRE) { LS.set('tempsLibre', tempsLibre.toFixed(0)); ouvrirCompte(true); return; } }
   const x0 = S.x, y0 = S.y;
   avance(dt / 2); avance(dt / 2);
   const dd = Math.hypot(S.x - x0, S.y - y0); distTot += dd; suiviTrajet(t);
