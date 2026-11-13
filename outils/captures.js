@@ -8,7 +8,7 @@ const { chromium } = require('playwright');
   for (const v of vues) {
     const [nom, x, y, cap, conduite] = v.split(':');
     const t0 = Date.now();
-    await p.goto(`${url}?x=${x}&y=${y}&cap=${cap}`, { waitUntil: 'load', timeout: 180000 });
+    await p.goto(`${url}?x=${x}&y=${y}&cap=${cap}${nom.startsWith('demo') ? '&demo_monuments=1' : ''}`, { waitUntil: 'load', timeout: 180000 });
     await p.waitForFunction(() => window.__pret || /pas pu/.test(document.getElementById('etape').textContent), null, { timeout: 240000 });
     const tc = ((Date.now() - t0) / 1000).toFixed(1);
     if (nom.startsWith('mur')) { await p.evaluate(() => { localStorage.removeItem('jeton'); localStorage.setItem('tempsLibre', '298'); }); await p.reload({ waitUntil: 'load' }); await p.waitForFunction(() => window.__pret, null, { timeout: 240000 }); await p.waitForTimeout(8000);
