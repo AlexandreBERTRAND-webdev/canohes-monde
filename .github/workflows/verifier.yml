@@ -1,0 +1,27 @@
+name: Vérifier les blocs en ligne
+# Interroge chaque bloc publié sur les 6 zones et liste ceux qui manquent.
+on: workflow_dispatch
+permissions: { contents: read }
+jobs:
+  verifier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          import json, urllib.request, concurrent.futures as cf
+          z = json.load(open("dept/zones.json"))
+          def ok(b):
+              u = z["bases"][z["blocs"][b]] + b + "/m.json"
+              try:
+                  return b, urllib.request.urlopen(urllib.request.Request(u, method="HEAD"), timeout=30).status == 200
+              except Exception:
+                  return b, False
+          with cf.ThreadPoolExecutor(16) as ex:
+              res = dict(ex.map(ok, z["blocs"]))
+          manque = sorted(b for b, v in res.items() if not v)
+          par = {}
+          for b in manque: par.setdefault(z["blocs"][b] + 1, []).append(b)
+          print(f"{len(res) - len(manque)} blocs en ligne sur {len(res)}")
+          for k, l in sorted(par.items()): print(f"zone {k} : {len(l)} manquants : {' '.join(l)}")
+          PY
