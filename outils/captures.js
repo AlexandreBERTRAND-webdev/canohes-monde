@@ -11,6 +11,8 @@ const { chromium } = require('playwright');
     await p.goto(`${url}?x=${x}&y=${y}&cap=${cap}`, { waitUntil: 'load', timeout: 180000 });
     await p.waitForFunction(() => window.__pret || /pas pu/.test(document.getElementById('etape').textContent), null, { timeout: 240000 });
     const tc = ((Date.now() - t0) / 1000).toFixed(1);
+    if (nom.startsWith('mur')) { await p.evaluate(() => { localStorage.removeItem('jeton'); localStorage.setItem('tempsLibre', '298'); }); await p.reload({ waitUntil: 'load' }); await p.waitForFunction(() => window.__pret, null, { timeout: 240000 }); await p.waitForTimeout(8000);
+      console.log(nom, 'fenêtre de compte visible :', await p.evaluate(() => !document.getElementById('vCompte').hidden)); }
     if (conduite) { await p.keyboard.down('ArrowUp'); await p.waitForTimeout(+conduite * 1000); await p.keyboard.up('ArrowUp'); }
     await p.waitForTimeout(3000);
     const info = await p.evaluate(() => { const S = window.__etat; return S ? { blocs: [...window.__blocs.values()].filter(b => b.pret).length, x: Math.round(S.x), y: Math.round(S.y), z: S.z && +S.z.toFixed(1),

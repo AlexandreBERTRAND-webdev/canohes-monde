@@ -43,6 +43,26 @@ body.tactile .pedale{display:flex} body.tactile #aide{bottom:auto; top:50%}
 #charge p{margin:0; opacity:.85; font-size:15px}
 #barre{width:min(320px,70vw); height:6px; border-radius:3px; background:rgba(255,255,255,.18); overflow:hidden}
 #barre b{display:block; height:100%; width:4%; background:var(--accent); transition:width .3s}
+#auteur{position:fixed; left:10px; bottom:6px; font-size:11.5px; text-shadow:0 1px 3px var(--ombre); z-index:2} #auteur a{color:var(--encre)}
+#aller{position:fixed; left:14px; top:240px; font:600 13px var(--texte); color:var(--encre); background:var(--panneau); border:1px solid rgba(255,255,255,.35); border-radius:9px; padding:8px 11px; cursor:pointer}
+#recherche{position:fixed; left:50%; top:70px; transform:translateX(-50%); width:min(560px, calc(100% - 32px)); background:var(--panneau); border-radius:12px; padding:12px; z-index:5; box-shadow:0 8px 30px rgba(0,0,0,.4)}
+#recherche form{display:flex; gap:8px} #recherche input{flex:1; min-width:0; padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,.35); background:rgba(0,0,0,.25); color:var(--encre); font:15px var(--texte)}
+#recherche button{padding:9px 12px; border-radius:8px; border:0; background:var(--accent); color:#111; font:700 14px var(--texte); cursor:pointer} #fermerRech{background:rgba(255,255,255,.18)!important; color:var(--encre)!important}
+#resRech{list-style:none; margin:8px 0 0; padding:0; max-height:50vh; overflow:auto} #resRech li button{width:100%; text-align:left; background:transparent!important; color:var(--encre)!important; font-weight:500!important; padding:9px 8px!important; border-bottom:1px solid rgba(255,255,255,.12)!important; border-radius:0!important}
+#resRech li button:hover{background:rgba(255,255,255,.1)!important} #resRech .hors{opacity:.55}
+#comptebtn{position:fixed; left:14px; top:280px; font:600 13px var(--texte); color:#111; background:var(--accent); border:0; border-radius:9px; padding:8px 11px; cursor:pointer}
+.voile{position:fixed; inset:0; background:rgba(10,14,20,.6); display:flex; align-items:center; justify-content:center; padding:16px; z-index:10}
+.voile[hidden]{display:none}
+.boite{width:min(520px, 100%); max-height:calc(100dvh - 32px); overflow:auto; background:#1d2733; color:var(--encre); border-radius:14px; padding:20px; box-shadow:0 12px 40px rgba(0,0,0,.5)}
+.boite h2{margin:0 0 6px; font-family:var(--titre); font-weight:400; font-size:28px; letter-spacing:.03em}
+.boite p{margin:8px 0; line-height:1.45} .boite small{display:block; opacity:.75; font-size:12.5px; line-height:1.45; margin-top:12px}
+.boite label{display:block; margin-top:10px; font-weight:600; font-size:14px} .boite input{width:100%; margin-top:5px; padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,.3); background:rgba(0,0,0,.25); color:var(--encre); font:16px var(--texte)}
+.boite .actions{display:flex; gap:8px; flex-wrap:wrap; margin-top:14px} .boite button{padding:10px 14px; border-radius:8px; border:0; font:700 14px var(--texte); cursor:pointer; background:var(--accent); color:#111}
+.boite button.second{background:rgba(255,255,255,.16); color:var(--encre)} .boite .msg{min-height:1.3em; color:#ffb3b3; font-size:14px} .boite a{color:var(--accent)}
+.onglets{display:flex; gap:6px; margin:6px 0 12px} .onglets button{background:rgba(255,255,255,.12); color:var(--encre)} .onglets button[aria-selected="true"]{background:var(--accent); color:#111}
+.chiffres{display:grid; grid-template-columns:repeat(2, 1fr); gap:8px} .chiffres div{background:rgba(255,255,255,.07); border-radius:10px; padding:10px} .chiffres b{display:block; font-family:var(--titre); font-weight:400; font-size:28px}
+table.classement{width:100%; border-collapse:collapse; font-size:14px} .classement td, .classement th{padding:6px 4px; border-bottom:1px solid rgba(255,255,255,.12); text-align:left} .classement td:last-child, .classement th:last-child{text-align:right}
+#carteRoutes{width:100%; aspect-ratio:1; background:#141c25; border-radius:10px; cursor:crosshair; display:block}
 #credit{position:fixed; right:10px; bottom:6px; font-size:10.5px; opacity:.7; text-shadow:0 1px 3px var(--ombre); pointer-events:none}
 body.tactile #credit{display:none}
 </style>
@@ -59,6 +79,27 @@ body.tactile #credit{display:none}
 <button class="pedale" id="droite" type="button" aria-label="Tourner à droite">▶</button>
 <button class="pedale" id="gaz" type="button" aria-label="Accélérer">▲</button>
 <button class="pedale" id="frein" type="button" aria-label="Freiner ou reculer">▼</button>
+<div id="auteur">Jeu créé par Alexandre BERTRAND · <a href="mailto:alexandre@bertrand.al">alexandre@bertrand.al</a> · <a href="https://bertrand.al/exandre/" target="_blank" rel="noopener">bertrand.al/exandre</a></div>
+<button id="aller" type="button">Aller à une adresse</button>
+<div id="recherche" role="dialog" aria-label="Aller à une adresse" hidden><form id="fRech"><input id="qRech" type="search" placeholder="Adresse, commune, lieu… dans les Pyrénées-Orientales" autocomplete="off" aria-label="Adresse"><button type="submit">Chercher</button><button type="button" id="fermerRech" aria-label="Fermer">✕</button></form><ul id="resRech"></ul></div>
+<button id="comptebtn" type="button">Mes stats</button>
+<div class="voile" id="vCompte" hidden><div class="boite" role="dialog" aria-modal="true" aria-labelledby="tCompte">
+  <h2 id="tCompte">Crée ton compte</h2>
+  <p id="introCompte">Le jeu est gratuit. Pour continuer à rouler, crée ton compte en une minute : tu verras tes stats, celles des autres joueurs et leurs routes.</p>
+  <form id="fCode"><label>Pseudo<input id="cPseudo" maxlength="20" autocomplete="nickname" placeholder="Visible des autres joueurs"></label>
+    <label>E-mail<input id="cEmail" type="email" maxlength="254" autocomplete="email" required></label>
+    <div class="actions"><button type="submit">Recevoir mon code</button><button type="button" class="second" id="fermerCompte">Plus tard</button></div></form>
+  <form id="fConnexion" hidden><p id="envoye"></p><label>Code reçu par e-mail<input id="cCode" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required></label>
+    <div class="actions"><button type="submit">Valider</button><button type="button" class="second" id="retourCode">Changer d'adresse</button></div></form>
+  <p class="msg" id="msgCompte" role="status" aria-live="polite"></p>
+  <small>Ton e-mail sert uniquement à te connecter et aux messages liés au jeu : pas de publicité, pas de spam, rien n'est revendu. Ton pseudo et tes trajets sont visibles des autres joueurs. Tu peux supprimer ton compte à tout moment depuis « Mes stats ». Jeu non commercial créé par Alexandre Bertrand, une question : <a href="mailto:alexandre@bertrand.al">alexandre@bertrand.al</a></small>
+</div></div>
+<div class="voile" id="vStats" hidden><div class="boite" role="dialog" aria-modal="true" aria-labelledby="tStats">
+  <h2 id="tStats">Stats</h2>
+  <div class="onglets" role="tablist"><button type="button" role="tab" data-o="moi" aria-selected="true">Moi</button><button type="button" role="tab" data-o="classement" aria-selected="false">Classement</button><button type="button" role="tab" data-o="carte" aria-selected="false">Carte des routes</button></div>
+  <div id="oMoi"></div><div id="oClassement" hidden></div><div id="oCarte" hidden><canvas id="carteRoutes" width="720" height="720" aria-label="Carte des routes des joueurs"></canvas><small>En jaune tes routes, en couleur celles des autres joueurs. Clique sur la carte pour y aller.</small></div>
+  <div class="actions"><button type="button" class="second" id="fermerStats">Fermer</button></div>
+</div></div>
 <div id="credit">Données IGN : BD TOPO, LiDAR HD, BD ORTHO, cadastre · © contributeurs OpenStreetMap</div>
 <div id="charge"><h1>ROUSSILLON</h1><p id="etape">Chargement…</p><div id="barre"><b></b></div></div>
 <script type="importmap">__IMPORTMAP__</script>
@@ -356,7 +397,8 @@ let DEPL = [DEP[0] - OX, DEP[1] - OY, S.cap];
 const depart = () => { [S.x, S.y, S.cap] = DEPL; S.camCap = S.cap; S.v = 0; S.z = S.cz = undefined; };
 const touches = new Set(); const cmd = { gaz: 0, dir: 0, frein: false };
 const CLES = { ArrowUp: 'h', KeyW: 'h', KeyZ: 'h', ArrowDown: 'b', KeyS: 'b', ArrowLeft: 'g', KeyA: 'g', KeyQ: 'g', ArrowRight: 'd', KeyD: 'd', Space: 'f' };
-addEventListener('keydown', e => { if (e.code === 'KeyR') depart(); const k = CLES[e.code]; if (k) { touches.add(k); e.preventDefault(); masqueAide(); } });
+const saisie = e => e.target && e.target.closest && e.target.closest('input, textarea, select');
+addEventListener('keydown', e => { if (saisie(e)) return; if (e.code === 'KeyR') depart(); const k = CLES[e.code]; if (k) { touches.add(k); e.preventDefault(); masqueAide(); } });
 addEventListener('keyup', e => { const k = CLES[e.code]; if (k) touches.delete(k); });
 addEventListener('blur', () => touches.clear());
 el('retour').addEventListener('click', () => { depart(); canvas.focus(); });
@@ -378,7 +420,7 @@ addEventListener('contextmenu', e => e.preventDefault());
 const VITESSES = [50, 90, 130, 200]; let vmaxKmh = 200; try { vmaxKmh = +localStorage.getItem('vmax') || 200; } catch (_) {}
 const majVmax = () => { el('vmax').textContent = 'Max ' + vmaxKmh; };
 const changeVmax = () => { vmaxKmh = VITESSES[(VITESSES.indexOf(vmaxKmh) + 1) % VITESSES.length]; majVmax(); try { localStorage.setItem('vmax', vmaxKmh); } catch (_) {} };
-majVmax(); el('vmax').addEventListener('click', () => { changeVmax(); canvas.focus(); }); addEventListener('keydown', e => { if (e.code === 'KeyV') changeVmax(); });
+majVmax(); el('vmax').addEventListener('click', () => { changeVmax(); canvas.focus(); }); addEventListener('keydown', e => { if (!saisie(e) && e.code === 'KeyV') changeVmax(); });
 let VMAX = vmaxKmh / 3.6; const VREC = -7, ACCEL = 9.5;
 function avance(dt) {
   const gaz = (touches.has('h') || ped.gaz ? 1 : 0) - (touches.has('b') || ped.frein ? 1 : 0), frein = touches.has('f');
@@ -388,7 +430,8 @@ function avance(dt) {
   else if (gaz > 0) S.v += (S.v < 0 ? 20 : ACCEL * (1 - S.v / VMAX)) * dt;
   else if (gaz < 0) S.v -= (S.v > 0.5 ? 18 : 5) * dt;
   else S.v -= Math.sign(S.v) * Math.min(Math.abs(S.v), 2.2 * dt);
-  S.v = Math.max(VREC, Math.min(VMAX, S.v));
+  S.v -= 9.81 * Math.sin(S.p || 0) * dt;                                      // pente : la gravité freine en montée, entraîne en descente
+  S.v = Math.max(VREC, Math.min(VMAX * (S.v > VMAX ? 1.15 : 1), S.v));
   const braq = 0.62 / (1 + Math.abs(S.v) * 0.085);
   const COINS = [[2.1, 0.8], [2.1, -0.8], [-2.1, 0.8], [-2.1, -0.8], [2.2, 0], [-2.2, 0], [0, 0.85], [0, -0.85]];
   const touche = (x, y, cap) => { const c = Math.cos(cap), s = Math.sin(cap);
@@ -419,6 +462,7 @@ function carte() { const R = 132, sc = R / 170, a = S.camCap - Math.PI / 2;
   const vus = []; for (const s_ of autour(IRUE, S.x, S.y, 5)) vus.push(s_);
   for (const pass of [1, 2]) { mini.beginPath(); for (const s_ of vus) if (s_[5] === pass) { mini.moveTo(s_[0], s_[1]); mini.lineTo(s_[2], s_[3]); }
     mini.strokeStyle = pass === 1 ? 'rgba(255,255,255,.78)' : '#fff'; mini.lineWidth = pass === 1 ? 6 : 9; mini.stroke(); }
+  mini.lineWidth = 5; for (const q of routesAutres) { mini.strokeStyle = couleur(q.pseudo); mini.globalAlpha = .8; mini.beginPath(); q.points.forEach(([x, y], i) => i ? mini.lineTo(x - OX, y - OY) : mini.moveTo(x - OX, y - OY)); mini.stroke(); } mini.globalAlpha = 1;
   for (const [x, y, , , c] of autour(ILIEU, S.x, S.y, 4)) { mini.fillStyle = c; mini.strokeStyle = '#fff'; mini.lineWidth = 2.5; mini.beginPath(); mini.arc(x, y, 6, 0, 7); mini.fill(); mini.stroke(); }
   mini.setTransform(1, 0, 0, 1, R, R + 26); mini.rotate(S.camCap - S.cap); mini.fillStyle = '#ffd23c'; mini.strokeStyle = 'rgba(0,0,0,.6)'; mini.lineWidth = 2.5;
   mini.beginPath(); mini.moveTo(0, -13); mini.lineTo(9, 10); mini.lineTo(0, 5); mini.lineTo(-9, 10); mini.closePath(); mini.fill(); mini.stroke(); mini.restore(); }
@@ -441,9 +485,12 @@ stat('partie', { bloc: cleBloc(S.x, S.y) });
 function boucle(t) {
   requestAnimationFrame(boucle);
   let dt = Math.min(0.05, (t - t0) / 1000); t0 = t; VMAX = vmaxKmh / 3.6;
+  if (PAUSE) { renderer.render(scene, camera); return; }
+  if (!JETON) { tempsLibre += dt; if (n % 120 === 0) LS.set('tempsLibre', tempsLibre.toFixed(0)); if (tempsLibre >= LIBRE) { LS.set('tempsLibre', tempsLibre.toFixed(0)); ouvrirCompte(true); return; } }
   const x0 = S.x, y0 = S.y;
   avance(dt / 2); avance(dt / 2);
-  distM += Math.hypot(S.x - x0, S.y - y0); if (distM >= 1000) { distM -= 1000; kmEnv++; stat('km', { bloc: cleBloc(S.x, S.y), total: kmEnv }); }
+  const dd = Math.hypot(S.x - x0, S.y - y0); distTot += dd; suiviTrajet(t);
+  distM += dd; if (distM >= 1000) { distM -= 1000; kmEnv++; stat('km', { bloc: cleBloc(S.x, S.y), total: kmEnv }); }
   if (Math.hypot(S.x - F.x, S.y - F.y) > 600) { F.x = Math.round(S.x / 100) * 100; F.y = Math.round(S.y / 100) * 100; S.cz = undefined; }   // origine flottante
   monde.position.set(-F.x, -(0), F.y);
   const cx = Math.cos(S.cap), cy = Math.sin(S.cap), zb = hauteur(S.x, S.y, S.z);
@@ -471,6 +518,79 @@ function boucle(t) {
     const lien = document.createElement('a'); lien.href = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q[2] + ' ' + (villeAff || '')); lien.target = '_blank'; lien.rel = 'noopener'; lien.textContent = 'Avis et fiche Google Maps ↗';
     b_.append(t1, t2, lien); b_.style.borderLeft = '6px solid ' + q[4]; b_.classList.add('vu'); } else b_.classList.remove('vu'); } }
 }
+// ── comptes : gratuit, mais compte obligatoire après 5 minutes de jeu ; trajets, stats et routes des joueurs ──
+const API = 'https://bertrand.al/jeu-api';
+const LS = { get: k => { try { return localStorage.getItem(k); } catch (_) { return null; } }, set: (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (_) {} } };
+let JETON = LS.get('jeton'), PSEUDO = LS.get('pseudo'), tempsLibre = +(LS.get('tempsLibre') || 0), PAUSE = false, emailCompte = '';
+const LIBRE = 300;                                                  // 5 minutes de jeu sans compte
+const api = async (chemin, corps) => { const r = await fetch(API + chemin, { method: corps ? 'POST' : 'GET', headers: Object.assign({ 'Content-Type': 'application/json' }, JETON ? { Authorization: 'Bearer ' + JETON } : {}), body: corps ? JSON.stringify(corps) : undefined });
+  const j = await r.json().catch(() => ({})); if (r.status === 401 && JETON) { JETON = null; LS.set('jeton', null); } if (!r.ok) throw new Error(j.erreur || 'Erreur ' + r.status); return j; };
+const vCompte = el('vCompte'), vStats = el('vStats'), msg = el('msgCompte');
+function ouvrirCompte(oblige) { vCompte.hidden = false; PAUSE = true; el('fermerCompte').hidden = !!oblige;
+  el('introCompte').textContent = oblige ? 'Tu as roulé 5 minutes. Le jeu reste gratuit : crée ton compte en une minute pour continuer, et tu verras tes stats, celles des autres joueurs et leurs routes.' : 'Le jeu est gratuit. Avec un compte, tu vois tes stats, celles des autres joueurs et leurs routes.';
+  el('fCode').hidden = false; el('fConnexion').hidden = true; msg.textContent = ''; el('cEmail').focus(); }
+const fermerCompte = () => { if (!JETON && tempsLibre >= LIBRE) return; vCompte.hidden = true; PAUSE = false; canvas.focus(); };
+el('fermerCompte').addEventListener('click', fermerCompte);
+el('fCode').addEventListener('submit', async e => { e.preventDefault(); msg.textContent = 'Envoi du code…'; emailCompte = el('cEmail').value.trim();
+  try { await api('/code', { email: emailCompte, pseudo: el('cPseudo').value.trim() }); el('fCode').hidden = true; el('fConnexion').hidden = false; msg.textContent = '';
+    el('envoye').textContent = 'Code envoyé à ' + emailCompte + '. Regarde aussi dans les indésirables.'; el('cCode').focus(); } catch (err) { msg.textContent = err.message; } });
+el('retourCode').addEventListener('click', () => { el('fCode').hidden = false; el('fConnexion').hidden = true; msg.textContent = ''; });
+el('fConnexion').addEventListener('submit', async e => { e.preventDefault(); msg.textContent = 'Vérification…';
+  try { const j = await api('/connexion', { email: emailCompte, code: el('cCode').value }); JETON = j.jeton; PSEUDO = j.pseudo; LS.set('jeton', JETON); LS.set('pseudo', PSEUDO);
+    msg.textContent = ''; vCompte.hidden = true; PAUSE = false; el('comptebtn').textContent = 'Mes stats'; canvas.focus(); } catch (err) { msg.textContent = err.message; } });
+// tableau des stats
+const fmtDate = t => new Date(t * 1000).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+const couleur = s => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) % 360; return `hsl(${h},75%,62%)`; };
+async function onglet(o) { for (const b of vStats.querySelectorAll('[data-o]')) b.setAttribute('aria-selected', b.dataset.o === o); el('oMoi').hidden = o !== 'moi'; el('oClassement').hidden = o !== 'classement'; el('oCarte').hidden = o !== 'carte';
+  try {
+    if (o === 'moi') { const m = await api('/moi'); const d = el('oMoi'); d.innerHTML = '';
+      const p = document.createElement('p'); p.textContent = 'Connecté en tant que ' + m.pseudo + '.'; d.append(p);
+      const g = document.createElement('div'); g.className = 'chiffres'; for (const [v, t] of [[m.km + ' km', 'parcourus'], [m.parties, 'parties'], [m.blocs, 'blocs de 2 km visités'], [m.minutes + ' min', 'de conduite']]) { const c = document.createElement('div'), b = document.createElement('b'); b.textContent = v; c.append(b, t); g.append(c); } d.append(g);
+      const act = document.createElement('div'); act.className = 'actions'; const dec = document.createElement('button'), sup = document.createElement('button'); dec.type = sup.type = 'button'; dec.className = sup.className = 'second';
+      dec.textContent = 'Se déconnecter'; sup.textContent = 'Supprimer mon compte';
+      dec.onclick = () => { JETON = null; LS.set('jeton', null); vStats.hidden = true; PAUSE = false; };
+      sup.onclick = async () => { if (!confirm('Supprimer ton compte et tous tes trajets ? C’est définitif.')) return; await api('/supprimer', {}); JETON = null; LS.set('jeton', null); vStats.hidden = true; PAUSE = false; };
+      act.append(dec, sup); d.append(act); }
+    if (o === 'classement') { const c = await api('/classement'), d = el('oClassement'); d.innerHTML = '';
+      const p = document.createElement('p'); p.textContent = `${c.inscrits} joueurs inscrits, ${c.total.km} km parcourus en ${c.total.parties} parties.`; d.append(p);
+      const t = document.createElement('table'); t.className = 'classement'; t.innerHTML = '<thead><tr><th>#</th><th>Joueur</th><th>Parties</th><th>Km</th></tr></thead>'; const tb = document.createElement('tbody');
+      c.joueurs.forEach((j, i) => { const tr = document.createElement('tr'); for (const v of [i + 1, j.pseudo, j.parties, j.km]) { const td = document.createElement('td'); td.textContent = v; tr.append(td); } tb.append(tr); }); t.append(tb); d.append(t); }
+    if (o === 'carte') { const cv = el('carteRoutes'), k = cv.getContext('2d'), cles = Object.keys(IDX.blocs).map(c => c.split('_').map(Number));
+      const ix0 = Math.min(...cles.map(c => c[0])), ix1 = Math.max(...cles.map(c => c[0])) + 1, iy0 = Math.min(...cles.map(c => c[1])), iy1 = Math.max(...cles.map(c => c[1])) + 1;
+      const n = Math.max(ix1 - ix0, iy1 - iy0), e = cv.width / n, X = x => (x / C - ix0) * e, Y = y => cv.height - (y / C - iy0) * e;
+      k.fillStyle = '#141c25'; k.fillRect(0, 0, cv.width, cv.height); k.fillStyle = '#2a3846'; for (const [i, j] of cles) k.fillRect((i - ix0) * e, cv.height - (j - iy0 + 1) * e, e - 0.6, e - 0.6);
+      const r = await api(`/carte?x0=${ix0 * C}&y0=${iy0 * C}&x1=${ix1 * C}&y1=${iy1 * C}`); k.lineWidth = 2; k.lineJoin = k.lineCap = 'round';
+      for (const t of r.routes.sort((a, b) => a.moi - b.moi)) { k.strokeStyle = t.moi ? '#ffd23c' : couleur(t.pseudo); k.beginPath(); t.points.forEach(([x, y], i) => i ? k.lineTo(X(x), Y(y)) : k.moveTo(X(x), Y(y))); k.stroke(); }
+      k.fillStyle = '#ffd23c'; k.beginPath(); k.arc(X(S.x + OX), Y(S.y + OY), 5, 0, 7); k.fill();
+      cv.onclick = ev => { const b = cv.getBoundingClientRect(), x = ((ev.clientX - b.left) / b.width * cv.width / e + ix0) * C, y = ((cv.height - (ev.clientY - b.top) / b.height * cv.height) / e + iy0) * C;
+        if (IDX.blocs[Math.floor(x / C) + '_' + Math.floor(y / C)] !== undefined) location.search = '?x=' + Math.round(x) + '&y=' + Math.round(y); }; }
+  } catch (err) { const d = el(o === 'moi' ? 'oMoi' : o === 'classement' ? 'oClassement' : 'oCarte'); const p = document.createElement('p'); p.textContent = 'Impossible de charger : ' + err.message; d.prepend(p); }
+}
+for (const b of vStats.querySelectorAll('[data-o]')) b.addEventListener('click', () => onglet(b.dataset.o));
+el('comptebtn').addEventListener('click', () => { if (!JETON) return ouvrirCompte(false); vStats.hidden = false; PAUSE = true; onglet('moi'); });
+el('fermerStats').addEventListener('click', () => { vStats.hidden = true; PAUSE = false; canvas.focus(); });
+addEventListener('keydown', e => { if (e.code === 'Escape') { if (!vStats.hidden) el('fermerStats').click(); else if (!vCompte.hidden) fermerCompte(); } });
+// trajet enregistré tous les 25 m, envoyé toutes les 30 s ; routes des autres joueurs sur la mini-carte
+const TRAJET = Date.now().toString(36) + Math.random().toString(36).slice(2, 8); let aEnvoyer = [], dernierPt = null, distTot = 0, envoiT = 0, routesAutres = [], routesT = -1e9;
+function suiviTrajet(t) {
+  if (!JETON) return; const X = S.x + OX, Y = S.y + OY;
+  if (!dernierPt || Math.hypot(X - dernierPt[0], Y - dernierPt[1]) >= 25) { dernierPt = [X, Y]; aEnvoyer.push([Math.round(X), Math.round(Y)]); }
+  if (t - envoiT > 30000 && aEnvoyer.length) { envoiT = t; const pts = aEnvoyer; aEnvoyer = []; api('/trajet', { id: TRAJET, points: pts, km: +(distTot / 1000).toFixed(2) }).catch(() => { aEnvoyer = pts.concat(aEnvoyer); }); }
+  if (t - routesT > 60000) { routesT = t; api(`/carte?x0=${X - 3000}&y0=${Y - 3000}&x1=${X + 3000}&y1=${Y + 3000}`).then(r => { routesAutres = r.routes.filter(q => !q.moi); }).catch(() => {}); }
+}
+addEventListener('pagehide', () => { if (JETON && aEnvoyer.length) fetch(API + '/trajet', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + JETON }, body: JSON.stringify({ id: TRAJET, points: aEnvoyer, km: +(distTot / 1000).toFixed(2) }) }); });
+// aller à une adresse : géocodage de la Géoplateforme IGN (gratuit, sans clé), réponse en Lambert-93
+{ const box = el('recherche'), q = el('qRech'), ul = el('resRech');
+  const ouvrir = () => { box.hidden = false; q.focus(); }, fermer = () => { box.hidden = true; canvas.focus(); };
+  el('aller').addEventListener('click', ouvrir); el('fermerRech').addEventListener('click', fermer);
+  addEventListener('keydown', e => { if (e.code === 'Escape' && !box.hidden) fermer(); });
+  el('fRech').addEventListener('submit', async e => { e.preventDefault(); if (q.value.trim().length < 3) return; ul.innerHTML = '<li>Recherche…</li>';
+    try { const r = await (await fetch('https://data.geopf.fr/geocodage/search?limit=8&q=' + encodeURIComponent(q.value.trim()))).json(); ul.innerHTML = '';
+      for (const f of r.features || []) { const p = f.properties, cle = Math.floor(p.x / C) + '_' + Math.floor(p.y / C), dedans = IDX.blocs[cle] !== undefined;
+        const li = document.createElement('li'), b = document.createElement('button'); b.type = 'button'; b.textContent = p.label + (dedans ? '' : ' (hors du jeu)'); if (!dedans) { b.disabled = true; li.className = 'hors'; }
+        b.addEventListener('click', () => { location.search = '?x=' + Math.round(p.x) + '&y=' + Math.round(p.y); }); li.append(b); ul.append(li); }
+      if (!ul.children.length) ul.innerHTML = '<li>Aucun résultat.</li>';
+    } catch (_) { ul.innerHTML = '<li>Recherche impossible pour le moment.</li>'; } }); }
 el('charge').style.display = 'none'; canvas.focus(); canvas.addEventListener('pointerdown', () => canvas.focus());
 requestAnimationFrame(boucle);
 window.__pret = true; window.__etat = S; window.__blocs = BLOCS;
