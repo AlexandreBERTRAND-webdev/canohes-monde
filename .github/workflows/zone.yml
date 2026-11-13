@@ -6,7 +6,7 @@ on:
       zone: { type: number, required: true }
       paquets: { type: number, default: 16 }
       blocs: { type: string, default: "" }          # reprise : seulement ces blocs (ix_iy séparés par des espaces)
-      precedent: { type: string, default: "" }      # reprise : numéro du calcul précédent dont on garde les blocs
+      precedent: { type: string, default: "" }      # reprise : numéros des calculs précédents dont on garde les blocs, du plus ancien au plus récent
 jobs:
   communs:
     runs-on: ubuntu-latest
@@ -68,13 +68,20 @@ jobs:
         with: { name: "journaux-${{ steps.nom.outputs.n }}", path: journaux, retention-days: 10 }
   publier:
     needs: calcul
-    if: always()
+    if: ${{ !cancelled() }}                         # jamais après un arrêt : on ne publie pas un site incomplet
     runs-on: ubuntu-latest
     environment: { name: github-pages, url: "${{ steps.d.outputs.page_url }}" }
     steps:
-      - uses: actions/download-artifact@v4
+      - name: Blocs des calculs précédents (du plus ancien au plus récent)
         if: inputs.precedent != ''
-        with: { pattern: "blocs-*", merge-multiple: true, path: site, run-id: "${{ inputs.precedent }}", github-token: "${{ github.token }}" }
+        run: |
+          mkdir -p site
+          for id in $PRECEDENT; do
+            gh run download "$id" -R "$REPO" -p 'blocs-*' -D "$RUNNER_TEMP/prec_$id"
+            for d in "$RUNNER_TEMP/prec_$id"/*/; do cp -r "$d". site/; done
+          done
+          ls site | wc -l
+        env: { GH_TOKEN: "${{ github.token }}", PRECEDENT: "${{ inputs.precedent }}", REPO: "${{ github.repository }}" }
       - uses: actions/download-artifact@v4
         with: { pattern: "blocs-*", merge-multiple: true, path: site }
       - run: touch site/.nojekyll && ls site | wc -l && du -sh site
