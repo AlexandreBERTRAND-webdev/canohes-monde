@@ -13,5 +13,7 @@ else:
     blocs = sorted(d for d in os.listdir(sys.argv[3]) if os.path.exists(os.path.join(sys.argv[3], d, "m.json")))
     idx = {"bases": [BASE], "blocs": {b: 0 for b in blocs}}
 json.dump(idx, open(os.path.join(SITE, "blocs.json"), "w"), separators=(",", ":"))
+import shutil
+shutil.copy(os.path.join(ICI, "monuments", "monuments.json"), os.path.join(SITE, "monuments.json"))
 open(os.path.join(SITE, ".nojekyll"), "w").close()
 print(len(idx["blocs"]), "blocs listés")

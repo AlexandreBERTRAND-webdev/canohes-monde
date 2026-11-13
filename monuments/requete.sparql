@@ -1,0 +1,8 @@
+SELECT ?m ?mLabel ?coord ?sl (SAMPLE(?typeLabel) AS ?type) (SAMPLE(?lieuLabel) AS ?lieu) WHERE {
+  ?m wdt:P17 wd:Q142 ; wdt:P625 ?coord ; wikibase:sitelinks ?sl .
+  { ?m wdt:P1435 wd:Q916475 } UNION { ?m wdt:P1435 wd:Q10387684 } UNION { ?m wdt:P1435 wd:Q9259 } UNION { ?m wdt:P1435 wd:Q10387575 }
+  FILTER(?sl >= 12)
+  OPTIONAL { ?m wdt:P31 ?t . ?t rdfs:label ?typeLabel . FILTER(LANG(?typeLabel) = "fr") }
+  OPTIONAL { ?m wdt:P131 ?l . ?l rdfs:label ?lieuLabel . FILTER(LANG(?lieuLabel) = "fr") }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "fr,en". }
+} GROUP BY ?m ?mLabel ?coord ?sl ORDER BY DESC(?sl) LIMIT 1500

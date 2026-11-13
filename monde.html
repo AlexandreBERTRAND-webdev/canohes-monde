@@ -114,7 +114,8 @@ if (tactile) { document.body.classList.add('tactile'); el('aide').textContent = 
 const stat = (nom, d) => { try { window.umami && window.umami.track(nom, d); } catch (_) {} };
 try {
 // ── blocs de 2 km (Lambert-93) : où trouver chacun, et le point de départ ──
-const IDX = await (await fetch('blocs.json')).json();             // { bases: [url, ...], blocs: { "ix_iy": n° de base } }
+const IDX = await (await fetch('blocs.json')).json();
+const MONUMENTS = await fetch('monuments.json').then(r => r.ok ? r.json() : []).catch(() => []);   // 400 monuments célèbres (Wikidata), Paris d'abord             // { bases: [url, ...], blocs: { "ix_iy": n° de base } }
 const prm = new URLSearchParams(location.search);
 const DEP = [+(prm.get('x') || 686223), +(prm.get('y') || 6172821)];   // départ par défaut : mairie de Canohès
 const C = 2000, I0 = Math.floor(DEP[0] / C), J0 = Math.floor(DEP[1] / C), OX = I0 * C, OY = J0 * C;   // repère local : coin sud-ouest du bloc de départ
@@ -123,6 +124,10 @@ let ZREF = null;                                                   // altitude d
 const BLOCS = new Map();                                           // blocs chargés ou en cours
 const cleBloc = (x, y) => Math.floor((x + OX) / C) + '_' + Math.floor((y + OY) / C);
 const blocEn = (x, y) => { const b = BLOCS.get(cleBloc(x, y)); return b && b.pret ? b : null; };
+// hauteur et occupation lues dans un bloc donné (y compris pendant sa construction, avant qu'il soit déclaré prêt)
+function solBloc(b, lx, ly) { const GN = b.GN, fx = Math.min(GN - 1.001, Math.max(0, lx / b.GS)), fy = Math.min(GN - 1.001, Math.max(0, ly / b.GS)), i = fx | 0, j = fy | 0, u = fx - i, v = fy - j, k = j * GN + i, H = b.HT;
+  return ((H[k] * (1 - u) + H[k + 1] * u) * (1 - v) + (H[k + GN] * (1 - u) + H[k + GN + 1] * u) * v) / b.hsc; }
+function murBloc(b, lx, ly) { const c = lx | 0, r = (b.ON - ly) | 0; if (c < 0 || r < 0 || c >= b.ON || r >= b.ON) return false; return (b.OCC[r * b.OB + (c >> 3)] >> (7 - (c & 7))) & 1; }
 function sol(x, y) { const b = blocEn(x, y); if (!b) return S && S.z !== undefined ? S.z : 0;
   const lx = x - b.ox, ly = y - b.oy, GN = b.GN, fx = Math.min(GN - 1.001, Math.max(0, lx / b.GS)), fy = Math.min(GN - 1.001, Math.max(0, ly / b.GS));
   const i = fx | 0, j = fy | 0, u = fx - i, v = fy - j, k = j * GN + i, H = b.HT;
@@ -252,8 +257,43 @@ function vitrine() { if (vitrineTex) return vitrineTex; const [c, k] = toile(256
   k.fillStyle = 'rgba(255,255,255,.16)'; k.beginPath(); k.moveTo(20, 140); k.lineTo(70, 18); k.lineTo(95, 18); k.lineTo(45, 140); k.fill();
   k.fillStyle = '#c9a43a'; k.fillRect(232, 82, 6, 16); return vitrineTex = texture(c); }
 
+// monuments : modèle 3D sommaire par famille (seulement si la BD TOPO n'a pas déjà le bâtiment), panneau marron au bord de la route
+const PIERRE = new THREE.MeshLambertMaterial({ color: 0xd9cfb8 }), ARDOISE = new THREE.MeshLambertMaterial({ color: 0x5d6670 }), FER = new THREE.MeshLambertMaterial({ color: 0x6b5442 });
+const FAMILLES = { tour_treillis: 'Tour', cathedrale: 'Édifice religieux', chateau: 'Château ou palais', arc: 'Arc ou porte', pont: 'Pont', tour: 'Tour', colonne: 'Monument', site: 'Site' };
+function modeleMonument(fam) {
+  const g = new THREE.Group(), add = (geo, mat, x, y, z, ry = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.y = ry; m.castShadow = OMBRES; g.add(m); return m; };
+  const frustum = (rb, rt, h, mat, y0) => add(new THREE.CylinderGeometry(rt, rb, h, 4, 1, true).rotateY(Math.PI / 4), mat, 0, y0 + h / 2, 0);
+  if (fam === 'tour_treillis') { // silhouette de la tour Eiffel : pieds évasés, deux plateformes, flèche (330 m)
+    for (const [sx, sz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) { const pied = add(new THREE.BoxGeometry(14, 62, 14), FER, sx * 42, 29, sz * 42); pied.rotation.set(sz * 0.42, 0, -sx * 0.42); }
+    add(new THREE.BoxGeometry(76, 7, 76), FER, 0, 58, 0); frustum(46, 20, 58, FER, 61); add(new THREE.BoxGeometry(40, 5, 40), FER, 0, 117, 0);
+    frustum(17, 4, 160, FER, 119); add(new THREE.BoxGeometry(9, 8, 9), FER, 0, 282, 0); add(new THREE.CylinderGeometry(0.6, 1.2, 44, 6), FER, 0, 308, 0);
+  } else if (fam === 'cathedrale') {
+    add(new THREE.BoxGeometry(80, 30, 28), PIERRE, 0, 15, 0); const toit = add(new THREE.CylinderGeometry(0.1, 16, 80, 3, 1).rotateZ(Math.PI / 2).rotateX(Math.PI / 6), ARDOISE, 0, 34, 0); toit.scale.set(1, 0.7, 1);
+    for (const z of [-11, 11]) { add(new THREE.BoxGeometry(14, 64, 12), PIERRE, -44, 32, z); add(new THREE.ConeGeometry(7, 14, 4), ARDOISE, -44, 71, z); }
+    add(new THREE.BoxGeometry(14, 24, 50), PIERRE, 12, 12, 0); add(new THREE.ConeGeometry(4, 40, 8), ARDOISE, 12, 50, 0);
+  } else if (fam === 'chateau') {
+    add(new THREE.BoxGeometry(46, 22, 32), PIERRE, 0, 11, 0); add(new THREE.BoxGeometry(18, 34, 18), PIERRE, 0, 17, 0);
+    for (const [x, z] of [[23, 16], [23, -16], [-23, 16], [-23, -16]]) { add(new THREE.CylinderGeometry(6, 6.5, 28, 14), PIERRE, x, 14, z); add(new THREE.ConeGeometry(7.5, 12, 14), ARDOISE, x, 34, z); }
+  } else if (fam === 'arc') { // proportions de l'Arc de triomphe : 50 m de haut, 45 de large, 22 d'épaisseur
+    for (const x of [-15.5, 15.5]) add(new THREE.BoxGeometry(14, 30, 22), PIERRE, x, 15, 0);
+    add(new THREE.BoxGeometry(45, 20, 22), PIERRE, 0, 40, 0); add(new THREE.BoxGeometry(47, 2.5, 24), PIERRE, 0, 51, 0);
+  } else if (fam === 'tour') { add(new THREE.CylinderGeometry(5, 6, 40, 16), PIERRE, 0, 20, 0); add(new THREE.ConeGeometry(6.5, 12, 16), ARDOISE, 0, 46, 0); }
+  else if (fam === 'colonne') { add(new THREE.BoxGeometry(8, 6, 8), PIERRE, 0, 3, 0); add(new THREE.CylinderGeometry(1.8, 2.2, 36, 14), PIERRE, 0, 24, 0); add(new THREE.SphereGeometry(2.4, 10, 8), FER, 0, 44, 0); }
+  else return null;
+  return g; }
+function panneauMarron(nom) { const [c, k] = toile(640, 200); k.fillStyle = '#6b3f23'; k.fillRect(0, 0, 640, 200); k.strokeStyle = '#fff'; k.lineWidth = 8; k.strokeRect(10, 10, 620, 180);
+  k.fillStyle = '#fff'; k.textAlign = 'center'; k.textBaseline = 'middle'; k.save(); k.translate(320, 100); texte(k, nom, 580, 64, '700', POLICE_PANNEAU); k.restore(); return texture(c); }
+function construireMonuments(b, plaque, poteau, VB, z0b) {
+  for (const m of MONUMENTS) { const x = m.x - OX - b.ox, y = m.y - OY - b.oy; if (x < 0 || y < 0 || x >= C || y >= C) continue;
+    const mod = murBloc(b, x, y) ? null : modeleMonument(m.famille);
+    if (mod) { mod.position.copy(VB(x, y, z0b(x, y))); b.group.add(mod); }
+    let best = 150, pos = null; for (const s_ of autour(IRUE, m.x - OX, m.y - OY, 3)) { const mx = (s_[0] + s_[2]) / 2, my = (s_[1] + s_[3]) / 2, d = Math.hypot(mx - m.x + OX, my - m.y + OY); if (d < best) { best = d; pos = [mx - b.ox, my - b.oy, Math.atan2(m.y - OY - my, m.x - OX - mx)]; } }
+    if (pos) { const [px, py, a] = pos, ex = px + Math.cos(a) * 6, ey = py + Math.sin(a) * 6, zs = z0b(ex, ey); poteau(ex, ey, zs, 3.2); plaque(ex, ey, zs + 3.4, a + Math.PI, 3.2, 1.0, panneauMarron(m.nom)); }
+    ajoute(ILIEU, m.x - OX, m.y - OY, [m.x - OX, m.y - OY, m.nom, FAMILLES[m.famille] || 'Monument', '#6b3f23', 'https://www.wikidata.org/wiki/Special:GoToLinkedPage/frwiki/' + m.wikidata, 120], b);
+  }
+}
 function construireObjets(b) {
-  const M = b.M, G = b.group, H2 = M.world / 2, z0b = (x, y) => sol(x + b.ox, y + b.oy) - b.dz;
+  const M = b.M, G = b.group, H2 = M.world / 2, z0b = (x, y) => solBloc(b, x, y);
   const VB = (x, y, z) => new THREE.Vector3(x - H2, z, -(y - H2));
   const plaque = (x, y, z, a, w, h, tex, ep = 0.06, dos) => { const g = new THREE.BoxGeometry(w, h, ep), mF = new THREE.MeshLambertMaterial({ map: tex });
     const m = new THREE.Mesh(g, [mDos, mDos, mDos, mDos, mF, dos || mDos]); m.position.copy(VB(x, y, z)); m.rotation.y = a + Math.PI / 2; m.castShadow = OMBRES; G.add(m); return m; };
@@ -297,6 +337,7 @@ function construireObjets(b) {
     ajoute(IPONT, p[0], p[1], p, b); ajoute(IPONT, p[3], p[4], p, b); }
   for (const [pts, k, nom] of (M.roads || [])) { if (!nom) continue;
     for (let i = 0; i < pts.length - 1; i++) { const s_ = [pts[i][0] + b.ox, pts[i][1] + b.oy, pts[i + 1][0] + b.ox, pts[i + 1][1] + b.oy, nom, k]; ajoute(IRUE, (s_[0] + s_[2]) / 2, (s_[1] + s_[3]) / 2, s_, b); } }
+  construireMonuments(b, plaque, poteau, VB, z0b);
 }
 // la voiture
 const car = new THREE.Group();
@@ -455,7 +496,7 @@ function rueProche() { let best = 18, nom = ''; for (const s_ of autour(IRUE, S.
 const maj = s => s.toLowerCase().replace(/(^|[\s'-])(\p{L})/gu, (m, a, b) => a + b.toUpperCase()).replace(/\b(De|Du|Des|La|Le|Les|D|L|Et|Aux|Au)\b/g, m => m.toLowerCase()).replace(/^./, m => m.toUpperCase());
 const dans = (x, y, poly) => { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, yi] = poly[i], [xj, yj] = poly[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
 function communeIci() { const b = blocEn(S.x, S.y); if (!b) return null; for (const [nom, poly] of (b.M.villes || [])) if (dans(S.x - b.ox, S.y - b.oy, poly)) return nom; return ''; }
-function lieuProche() { let best = 28, q = null; for (const p of autour(ILIEU, S.x, S.y)) { const d = Math.hypot(p[0] - S.x, p[1] - S.y); if (d < best) { best = d; q = p; } } return q; }
+function lieuProche() { let best = 1e9, q = null; for (const p of autour(ILIEU, S.x, S.y, 2)) { const d = Math.hypot(p[0] - S.x, p[1] - S.y); if (d < (p[6] || 28) && d < best) { best = d; q = p; } } return q; }
 const mini = el('mini').getContext('2d');
 function carte() { const R = 132, sc = R / 170, a = S.camCap - Math.PI / 2;
   mini.setTransform(1, 0, 0, 1, 0, 0); mini.clearRect(0, 0, 264, 264); mini.save(); mini.beginPath(); mini.arc(R, R, R, 0, 7); mini.clip();
@@ -482,6 +523,9 @@ while ((![...BLOCS.values()].some(b => b.pret) || [...BLOCS.values()].filter(b =
 if (![...BLOCS.values()].some(b => b.pret)) throw new Error('aucun bloc disponible ici');
 { const nm = rueProche(); if (!prm.get('cap')) { let best = 1e9; for (const s_ of autour(IRUE, S.x, S.y, 2)) { const d = Math.hypot((s_[0] + s_[2]) / 2 - S.x, (s_[1] + s_[3]) / 2 - S.y); if (d < best && s_[5] === 2) { best = d; S.x = (s_[0] + s_[2]) / 2; S.y = (s_[1] + s_[3]) / 2; S.cap = S.camCap = Math.atan2(s_[3] - s_[1], s_[2] - s_[0]); } } } }
 DEPL = [S.x, S.y, S.cap];
+if (prm.get('demo_monuments')) { const fams = ['tour_treillis', 'cathedrale', 'chateau', 'arc', 'tour', 'colonne'];
+  fams.forEach((f, i) => { const mod = modeleMonument(f), d = 180 + i * 140, x = S.x + Math.cos(S.cap) * d + Math.cos(S.cap + 1.57) * (i % 2 ? 70 : -70), y = S.y + Math.sin(S.cap) * d + Math.sin(S.cap + 1.57) * (i % 2 ? 70 : -70);
+    mod.position.set(x, sol(x, y), -y); monde.add(mod); }); }
 let t0 = performance.now(), n = 0, nomAff = null, lieuAff = null, villeAff = null, blocAff = null, distM = 0, kmEnv = 0;
 stat('partie', { bloc: cleBloc(S.x, S.y) });
 function boucle(t) {
@@ -517,7 +561,7 @@ function boucle(t) {
   if (n % 12 === 0) { const nm = rueProche(); if (nm !== nomAff) { nomAff = nm; el('rue').textContent = nm ? maj(nm) : ''; } }
   if (n % 24 === 3) { const v = communeIci(); if (v !== null && v !== villeAff) { villeAff = v; el('ville').textContent = (v || 'Pyrénées-Orientales').toUpperCase(); } }
   if (n % 12 === 6) { const q = lieuProche(); if (q !== lieuAff) { lieuAff = q; const b_ = el('lieu'); if (q) { b_.innerHTML = ''; const t1 = document.createElement('b'), t2 = document.createElement('small'); t1.textContent = q[2]; t2.textContent = q[3];
-    const lien = document.createElement('a'); lien.href = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q[2] + ' ' + (villeAff || '')); lien.target = '_blank'; lien.rel = 'noopener'; lien.textContent = 'Avis et fiche Google Maps ↗';
+    const lien = document.createElement('a'); if (q[5]) { lien.href = q[5]; lien.textContent = 'Wikipédia ↗'; } else { lien.href = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q[2] + ' ' + (villeAff || '')); lien.textContent = 'Avis et fiche Google Maps ↗'; } lien.target = '_blank'; lien.rel = 'noopener';
     b_.append(t1, t2, lien); b_.style.borderLeft = '6px solid ' + q[4]; b_.classList.add('vu'); } else b_.classList.remove('vu'); } }
 }
 // ── comptes : gratuit, mais compte obligatoire après 5 minutes de jeu ; trajets, stats et routes des joueurs ──
@@ -586,11 +630,17 @@ addEventListener('pagehide', () => { if (JETON && aEnvoyer.length) fetch(API + '
   const ouvrir = () => { box.hidden = false; q.focus(); }, fermer = () => { box.hidden = true; canvas.focus(); };
   el('aller').addEventListener('click', ouvrir); el('fermerRech').addEventListener('click', fermer);
   addEventListener('keydown', e => { if (e.code === 'Escape' && !box.hidden) fermer(); });
+  const versMonument = m => { const dedans = IDX.blocs[Math.floor(m.x / C) + '_' + Math.floor(m.y / C)] !== undefined, li = document.createElement('li'), bt = document.createElement('button');
+    bt.type = 'button'; bt.textContent = '★ ' + m.nom + (m.lieu ? ' · ' + m.lieu : '') + (dedans ? '' : ' (pas encore dans le jeu)'); if (!dedans) { bt.disabled = true; li.className = 'hors'; }
+    bt.addEventListener('click', () => { location.search = '?x=' + m.x + '&y=' + (m.y - 150); }); li.append(bt); return li; };
+  const listeMonuments = filtre => { const f = (filtre || '').toLowerCase(); return MONUMENTS.filter(m => !f || (m.nom + ' ' + m.lieu).toLowerCase().includes(f)).slice(0, f ? 12 : 40).map(versMonument); };
+  el('aller').addEventListener('click', () => { if (!q.value) { ul.innerHTML = '<li><b>Monuments célèbres</b></li>'; ul.append(...listeMonuments('')); } });
   el('fRech').addEventListener('submit', async e => { e.preventDefault(); if (q.value.trim().length < 3) return; ul.innerHTML = '<li>Recherche…</li>';
     try { const r = await (await fetch('https://data.geopf.fr/geocodage/search?limit=8&q=' + encodeURIComponent(q.value.trim()))).json(); ul.innerHTML = '';
       for (const f of r.features || []) { const p = f.properties, cle = Math.floor(p.x / C) + '_' + Math.floor(p.y / C), dedans = IDX.blocs[cle] !== undefined;
         const li = document.createElement('li'), b = document.createElement('button'); b.type = 'button'; b.textContent = p.label + (dedans ? '' : ' (hors du jeu)'); if (!dedans) { b.disabled = true; li.className = 'hors'; }
         b.addEventListener('click', () => { location.search = '?x=' + Math.round(p.x) + '&y=' + Math.round(p.y); }); li.append(b); ul.append(li); }
+      ul.prepend(...listeMonuments(q.value.trim()));
       if (!ul.children.length) ul.innerHTML = '<li>Aucun résultat.</li>';
     } catch (_) { ul.innerHTML = '<li>Recherche impossible pour le moment.</li>'; } }); }
 el('charge').style.display = 'none'; canvas.focus(); canvas.addEventListener('pointerdown', () => canvas.focus());
