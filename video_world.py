@@ -629,26 +629,44 @@ if tirets:
     drape(unary_union(tirets).intersection(chaussee.buffer(-0.3)), 0.075, [0.92, 0.92, 0.9])
 log("chaussée:", round(chaussee.area), "m2, trottoirs:", round(trottoir.area), "m2")
 
-# ==== ponts : tablier à la hauteur interpolée entre ses deux extrémités, garde-corps, piles ====
+# ==== ponts : tablier à sa hauteur réelle (relevé laser de surface), garde-corps, piles ====
 def quads(A, Bq, C, Dq):
     """Quadrilatères A-B-C-D (tableaux (n,3)) en triangles."""
     return np.concatenate([np.stack([A, Bq, C], 1), np.stack([A, C, Dq], 1)])
 
 
 ponts_out = []
-_pl = shapely.ops.linemerge([LineString(c) for c, _ in ponts_src]) if ponts_src else None
-_pw = {}
-for c, w in ponts_src:
-    _pw[tuple(np.round(c[0], 1))] = w
-for ln in ([] if _pl is None else (_pl.geoms if hasattr(_pl, "geoms") else [_pl])):
+
+
+def z_tablier(P):
+    """Hauteur réelle du tablier le long de l'axe : relevé laser de surface (médiane locale, sans voitures ni lampadaires),
+    lissée ; si le laser ne voit pas de tablier, interpolation entre les deux extrémités au sol."""
+    sol_ = zgv(P)
+    v = []
+    for x_, y_ in P:
+        r_, c_ = int((COTE - y_) / 0.5), int(x_ / 0.5)
+        win = mns[max(0, r_ - 2):r_ + 3, max(0, c_ - 2):c_ + 3]
+        v.append(float(np.median(win)) - ZO if win.size else np.nan)
+    v = np.array(v)
+    lin = sol_[0] + (sol_[-1] - sol_[0]) * np.linspace(0, 1, len(P))
+    if not np.isfinite(v).all() or np.nanmax(v - sol_) < 1.5:
+        return lin + 0.05
+    v = ndi.median_filter(v, size=7, mode="nearest")
+    v = ndi.gaussian_filter1d(v, 2.0, mode="nearest")
+    v[0], v[-1] = sol_[0], sol_[-1]                                       # les extrémités rejoignent le sol (culées)
+    k = max(1, min(len(v) // 4, 3))
+    v[:k + 1] = np.linspace(sol_[0], v[k], k + 1); v[-k - 1:] = np.linspace(v[-k - 1], sol_[-1], k + 1)
+    return np.maximum(v, sol_) + 0.05
+
+
+for c_p, w in ponts_src:
+    ln = LineString(c_p)
     if ln.length < 6:
         continue
-    w = max([w_ for c_, w_ in ponts_src if LineString(c_).distance(ln) < 0.5] or [6.0])
     n = max(3, int(ln.length / 2) + 1)
     ss = np.linspace(0, ln.length, n)
     P = np.array([ln.interpolate(t).coords[0] for t in ss])
-    za, zb = zg(*P[0]), zg(*P[-1])
-    Z = za + (zb - za) * ss / ln.length + 0.05
+    Z = z_tablier(P)
     T = np.gradient(P, axis=0); T /= np.linalg.norm(T, axis=1)[:, None] + 1e-9
     N_ = np.column_stack([-T[:, 1], T[:, 0]])
     hw = max(w, 3.0) / 2 + 0.6
