@@ -27,6 +27,7 @@ const { chromium } = require('playwright');
         S.x = q[0] + best.b.ox; S.y = q[1] + best.b.oy; S.cap = S.camCap = cap; if (cote) { S.x += Math.cos(cap + 1.57) * 45 - Math.cos(cap) * 25; S.y += Math.sin(cap + 1.57) * 45 - Math.sin(cap) * 25; S.cap = S.camCap = cap - 1.2; }
         S.v = 0; S.z = S.cz = undefined; return best.pts.length; }, nom.includes('cote'));
       console.log(nom, 'pont trouvé :', ok); await p.waitForTimeout(4000); }
+    if (nom.startsWith('vol')) { await p.mouse.click(640, 400); await p.keyboard.press('KeyF'); await p.waitForTimeout(4000); console.log(nom, 'mode vol :', await p.evaluate(() => document.getElementById('vol').getAttribute('aria-pressed'))); }
     if (conduite) { await p.keyboard.down('ArrowUp'); await p.waitForTimeout(+conduite * 1000); await p.keyboard.up('ArrowUp'); }
     await p.waitForTimeout(3000);
     const info = await p.evaluate(() => { const S = window.__etat; return S ? { blocs: [...window.__blocs.values()].filter(b => b.pret).length, x: Math.round(S.x), y: Math.round(S.y), z: S.z && +S.z.toFixed(1),
