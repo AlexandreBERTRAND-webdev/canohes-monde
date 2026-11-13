@@ -14,8 +14,9 @@ const { chromium } = require('playwright');
     if (nom.startsWith('mur')) { await p.evaluate(() => { localStorage.removeItem('jeton'); localStorage.setItem('tempsLibre', '298'); }); await p.reload({ waitUntil: 'load' }); await p.waitForFunction(() => window.__pret, null, { timeout: 240000 }); await p.waitForTimeout(8000);
       console.log(nom, 'fenêtre de compte visible :', await p.evaluate(() => !document.getElementById('vCompte').hidden)); }
     if (nom.startsWith('commerce')) {   // commerce : la voiture à 12 m devant une enseigne en façade, tournée vers elle
-      const ok = await p.evaluate(() => { for (const b of window.__blocs.values()) if (b.pret) for (const s of (b.M.shops || [])) if (s[6] && s[5] !== 'townhall') { const S = window.__etat;
-        S.x = s[0] + b.ox + Math.cos(s[3]) * 12; S.y = s[1] + b.oy + Math.sin(s[3]) * 12; S.cap = S.camCap = s[3] + Math.PI; S.v = 0; S.z = S.cz = undefined; return s[4]; } return false; });
+      const mot = (nom.split('_')[1] || '').toLowerCase();
+      const ok = await p.evaluate((mot) => { for (const b of window.__blocs.values()) if (b.pret) for (const s of (b.M.shops || [])) if (s[6] && s[5] !== 'townhall' && (!mot || s[4].toLowerCase().includes(mot))) { const S = window.__etat;
+        S.x = s[0] + b.ox + Math.cos(s[3]) * 12; S.y = s[1] + b.oy + Math.sin(s[3]) * 12; S.cap = S.camCap = s[3] + Math.PI; S.v = 0; S.z = S.cz = undefined; return s[4]; } return false; }, mot);
       console.log(nom, 'enseigne :', ok); await p.waitForTimeout(4000);
       console.log(nom, 'diagnostic :', JSON.stringify(await p.evaluate(() => { const out = []; for (const b of window.__blocs.values()) if (b.pret) { let n = 0, ex = null;
         b.group.traverse(o => { if (o.isMesh && Array.isArray(o.material) && o.material[4] && o.material[4].map) { n++; if (!ex) { const v = o.getWorldPosition(new o.position.constructor()); ex = [+v.x.toFixed(1), +v.y.toFixed(1), +v.z.toFixed(1)]; } } });
