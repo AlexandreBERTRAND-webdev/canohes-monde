@@ -13,6 +13,10 @@ const { chromium } = require('playwright');
     const tc = ((Date.now() - t0) / 1000).toFixed(1);
     if (nom.startsWith('mur')) { await p.evaluate(() => { localStorage.removeItem('jeton'); localStorage.setItem('tempsLibre', '298'); }); await p.reload({ waitUntil: 'load' }); await p.waitForFunction(() => window.__pret, null, { timeout: 240000 }); await p.waitForTimeout(8000);
       console.log(nom, 'fenêtre de compte visible :', await p.evaluate(() => !document.getElementById('vCompte').hidden)); }
+    if (nom.startsWith('commerce')) {   // commerce : la voiture à 12 m devant une enseigne en façade, tournée vers elle
+      const ok = await p.evaluate(() => { for (const b of window.__blocs.values()) if (b.pret) for (const s of (b.M.shops || [])) if (s[6] && s[5] !== 'townhall') { const S = window.__etat;
+        S.x = s[0] + b.ox + Math.cos(s[3]) * 12; S.y = s[1] + b.oy + Math.sin(s[3]) * 12; S.cap = S.camCap = s[3] + Math.PI; S.v = 0; S.z = S.cz = undefined; return s[4]; } return false; });
+      console.log(nom, 'enseigne :', ok); await p.waitForTimeout(4000); }
     if (nom.startsWith('pont')) {   // pont : la voiture sur le plus long tablier des blocs chargés (pontdessus), ou à côté pour le voir (pontcote)
       const ok = await p.evaluate((cote) => { let best = null; for (const b of window.__blocs.values()) if (b.pret) for (const [pts] of (b.M.ponts || [])) { const L = pts.length; if (!best || L > best.L) best = { L, pts, b }; }
         if (!best) return false; const k = Math.floor(best.pts.length / 2), q = best.pts[k], r = best.pts[Math.min(best.pts.length - 1, k + 1)], S = window.__etat, cap = Math.atan2(r[1] - q[1], r[0] - q[0]);
