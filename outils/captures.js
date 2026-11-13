@@ -16,7 +16,10 @@ const { chromium } = require('playwright');
     if (nom.startsWith('commerce')) {   // commerce : la voiture à 12 m devant une enseigne en façade, tournée vers elle
       const ok = await p.evaluate(() => { for (const b of window.__blocs.values()) if (b.pret) for (const s of (b.M.shops || [])) if (s[6] && s[5] !== 'townhall') { const S = window.__etat;
         S.x = s[0] + b.ox + Math.cos(s[3]) * 12; S.y = s[1] + b.oy + Math.sin(s[3]) * 12; S.cap = S.camCap = s[3] + Math.PI; S.v = 0; S.z = S.cz = undefined; return s[4]; } return false; });
-      console.log(nom, 'enseigne :', ok); await p.waitForTimeout(4000); }
+      console.log(nom, 'enseigne :', ok); await p.waitForTimeout(4000);
+      console.log(nom, 'diagnostic :', JSON.stringify(await p.evaluate(() => { const out = []; for (const b of window.__blocs.values()) if (b.pret) { let n = 0, ex = null;
+        b.group.traverse(o => { if (o.isMesh && Array.isArray(o.material) && o.material[4] && o.material[4].map) { n++; if (!ex) { const v = o.getWorldPosition(new o.position.constructor()); ex = [+v.x.toFixed(1), +v.y.toFixed(1), +v.z.toFixed(1)]; } } });
+        out.push([b.cle, n, ex]); } const c = window.__car; return { plaques: out.slice(0, 4), voiture: c ? [+c.position.x.toFixed(1), +c.position.y.toFixed(1), +c.position.z.toFixed(1)] : null }; }))); }
     if (nom.startsWith('pont')) {   // pont : la voiture sur le plus long tablier des blocs chargés (pontdessus), ou à côté pour le voir (pontcote)
       const ok = await p.evaluate((cote) => { let best = null; for (const b of window.__blocs.values()) if (b.pret) for (const [pts] of (b.M.ponts || [])) { const L = pts.length; if (!best || L > best.L) best = { L, pts, b }; }
         if (!best) return false; const k = Math.floor(best.pts.length / 2), q = best.pts[k], r = best.pts[Math.min(best.pts.length - 1, k + 1)], S = window.__etat, cap = Math.atan2(r[1] - q[1], r[0] - q[0]);

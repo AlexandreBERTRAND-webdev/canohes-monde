@@ -645,7 +645,7 @@ addEventListener('pagehide', () => { if (JETON && aEnvoyer.length) fetch(API + '
     } catch (_) { ul.innerHTML = '<li>Recherche impossible pour le moment.</li>'; } }); }
 el('charge').style.display = 'none'; canvas.focus(); canvas.addEventListener('pointerdown', () => canvas.focus());
 requestAnimationFrame(boucle);
-window.__pret = true; window.__etat = S; window.__blocs = BLOCS;
+window.__pret = true; window.__etat = S; window.__blocs = BLOCS; window.__car = car;
 } catch (e) {
   el('etape').textContent = 'Le monde n’a pas pu se charger (' + e.message + '). Recharge la page.'; console.error(e);
 }
