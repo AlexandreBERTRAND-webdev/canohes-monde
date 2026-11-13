@@ -414,6 +414,7 @@ async function charge(cle) {
     for (const t of Object.values(M.tiles)) {
       if (t.roofs) add(geom(t.roofs), t.roofs.col ? mToit : mPlain, true, true);
       if (t.walls) add(geom(t.walls), murPour(M.volets), true, true);
+      if (t.walls2) add(geom(t.walls2), murPour(M.volets2), true, true);
       for (const nm of ['plain', 'trees', 'lamps']) if (t[nm]) add(nm === 'trees' ? lisse(geom(t[nm])) : geom(t[nm]), nm === 'trees' ? mArbre : mPlain, true, nm === 'plain');
       if (t.over) add(geom(t.over), mOver, false, true);
     }

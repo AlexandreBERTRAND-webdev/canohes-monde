@@ -1,136 +1,1635 @@
 {
-  "_lisez_moi": "Couleurs des maisons par région. facades : enduits ou matériaux dominants (RGB 0-1), tirés au sort maison par maison. volets : couleurs des volets peints sur la texture des fenêtres. clotures : parts de mur clair, haie et muret. departements : codes INSEE. Ajouter une région ici suffit, sans toucher au code.",
+ "_lisez_moi": "Couleurs des bâtiments, de la plus précise à la plus générale : commune (code INSEE), puis région (liste de départements), puis défaut. Pour chaque niveau : époques « ancien » (avant 1946), « moderne » (1946-1989), « recent » (depuis 1990), chacune avec facades (couleurs tirées au sort) et volets ; « materiaux » donne la couleur d'un matériau resté apparent (pierre, brique, meuliere, bois), null s'il est d'habitude enduit. L'époque vient de l'année de construction de la BD TOPO ; à défaut, une maison mitoyenne et serrée est classée ancienne. Le matériau vient des fichiers fonciers (materiaux_des_murs). Ajouter une région ou une ville ici suffit, sans toucher au code.",
+ "regions": {
   "roussillon": {
-    "nom": "Roussillon et Catalogne",
-    "facades": [[0.93, 0.83, 0.66], [0.95, 0.88, 0.76], [0.91, 0.74, 0.60], [0.94, 0.80, 0.67], [0.88, 0.67, 0.55], [0.96, 0.93, 0.86], [0.90, 0.78, 0.58]],
-    "volets": ["#5f8a7a", "#4f6f8f", "#7a3b3b", "#7a8f86"],
-    "clotures": [0.55, 0.25, 0.20],
-    "departements": ["66"]
+   "nom": "Roussillon et Catalogne",
+   "departements": [
+    "66"
+   ],
+   "clotures": [
+    0.55,
+    0.25,
+    0.2
+   ],
+   "ancien": {
+    "facades": [
+     "#e9cfa6",
+     "#e3b98f",
+     "#d9a37f",
+     "#efd9b8",
+     "#e6c39a",
+     "#d7a184"
+    ],
+    "volets": [
+     "#5f8a7a",
+     "#4f6f8f",
+     "#7a3b3b",
+     "#7a8f86"
+    ]
+   },
+   "moderne": {
+    "facades": [
+     "#f0e2c8",
+     "#ecd6b4",
+     "#f3e8d6",
+     "#e8cfae",
+     "#f1e6d2"
+    ],
+    "volets": [
+     "#8a6a4f",
+     "#7a8f86",
+     "#a3a3a0"
+    ]
+   },
+   "recent": {
+    "facades": [
+     "#f4ede2",
+     "#efe4d2",
+     "#f6f3ec",
+     "#e9dcc6",
+     "#d9d4cb"
+    ],
+    "volets": [
+     "#ededea",
+     "#4a4f55"
+    ]
+   },
+   "materiaux": {
+    "pierre": [
+     "#b9a58a",
+     "#a8957c",
+     "#c4b298"
+    ],
+    "brique": null,
+    "meuliere": null,
+    "bois": [
+     "#8a6a4a"
+    ]
+   }
   },
   "languedoc": {
-    "nom": "Languedoc",
-    "facades": [[0.92, 0.86, 0.74], [0.95, 0.91, 0.82], [0.88, 0.80, 0.66], [0.94, 0.85, 0.72], [0.90, 0.84, 0.76]],
-    "volets": ["#7f97a3", "#8a9a7a", "#a3a3a0", "#6f7f8f"],
-    "clotures": [0.55, 0.25, 0.20],
-    "departements": ["11", "34", "30", "48", "12"]
+   "nom": "Languedoc",
+   "departements": [
+    "11",
+    "34",
+    "30",
+    "48",
+    "12"
+   ],
+   "clotures": [
+    0.55,
+    0.25,
+    0.2
+   ],
+   "ancien": {
+    "facades": [
+     "#e2d3b6",
+     "#d9c7a5",
+     "#eadcc2",
+     "#cdb995"
+    ],
+    "volets": [
+     "#7f97a3",
+     "#8a9a7a",
+     "#6f7f8f"
+    ]
+   },
+   "moderne": {
+    "facades": [
+     "#efe3cc",
+     "#ecdcc0",
+     "#f3eadb"
+    ],
+    "volets": [
+     "#a3a3a0",
+     "#8a6a4f"
+    ]
+   },
+   "recent": {
+    "facades": [
+     "#f4ede2",
+     "#efe4d2",
+     "#f6f3ec",
+     "#e5dbcb"
+    ],
+    "volets": [
+     "#ededea",
+     "#4a4f55"
+    ]
+   },
+   "materiaux": {
+    "pierre": [
+     "#cbbb9a",
+     "#bfae8c",
+     "#d6c7a8"
+    ],
+    "brique": null,
+    "bois": [
+     "#8a6a4a"
+    ]
+   }
   },
   "provence": {
-    "nom": "Provence et Côte d'Azur",
-    "facades": [[0.93, 0.78, 0.52], [0.91, 0.66, 0.52], [0.95, 0.84, 0.66], [0.90, 0.72, 0.62], [0.96, 0.90, 0.78], [0.87, 0.60, 0.48]],
-    "volets": ["#7f9fbf", "#8fae8a", "#a3bfbf", "#5f7f9f"],
-    "clotures": [0.60, 0.25, 0.15],
-    "departements": ["13", "83", "84", "04", "06", "05"]
+   "nom": "Provence et Côte d'Azur",
+   "departements": [
+    "13",
+    "83",
+    "84",
+    "04",
+    "06",
+    "05"
+   ],
+   "clotures": [
+    0.6,
+    0.25,
+    0.15
+   ],
+   "ancien": {
+    "facades": [
+     "#e8c27f",
+     "#dea07f",
+     "#efcf9e",
+     "#e2b08f",
+     "#d98f74",
+     "#f0d7aa"
+    ],
+    "volets": [
+     "#7f9fbf",
+     "#8fae8a",
+     "#a3bfbf",
+     "#5f7f9f"
+    ]
+   },
+   "moderne": {
+    "facades": [
+     "#f0dcb4",
+     "#eed0b0",
+     "#f2e3c8"
+    ],
+    "volets": [
+     "#8fae8a",
+     "#7f9fbf",
+     "#a3a3a0"
+    ]
+   },
+   "recent": {
+    "facades": [
+     "#f3e6cf",
+     "#f1dcc0",
+     "#f6efe3"
+    ],
+    "volets": [
+     "#ededea",
+     "#4a4f55",
+     "#8fae8a"
+    ]
+   },
+   "materiaux": {
+    "pierre": [
+     "#d6c6a3",
+     "#cdb995"
+    ],
+    "brique": null,
+    "bois": [
+     "#8a6a4a"
+    ]
+   }
   },
   "corse": {
-    "nom": "Corse",
-    "facades": [[0.74, 0.71, 0.66], [0.82, 0.76, 0.66], [0.88, 0.80, 0.68], [0.70, 0.66, 0.60], [0.92, 0.86, 0.76]],
-    "volets": ["#6f8f7a", "#7f8f9f", "#8a8a80"],
-    "clotures": [0.30, 0.20, 0.50],
-    "departements": ["2A", "2B"]
+   "nom": "Corse",
+   "departements": [
+    "2A",
+    "2B"
+   ],
+   "clotures": [
+    0.3,
+    0.2,
+    0.5
+   ],
+   "ancien": {
+    "facades": [
+     "#b6ada1",
+     "#c9bba2",
+     "#a99f92",
+     "#d6c4a6"
+    ],
+    "volets": [
+     "#6f8f7a",
+     "#7f8f9f",
+     "#8a8a80"
+    ]
+   },
+   "moderne": {
+    "facades": [
+     "#e8dcc6",
+     "#e2d2b8"
+    ],
+    "volets": [
+     "#a3a3a0",
+     "#6f8f7a"
+    ]
+   },
+   "recent": {
+    "facades": [
+     "#f1e9dc",
+     "#ece2d0"
+    ],
+    "volets": [
+     "#ededea",
+     "#4a4f55"
+    ]
+   },
+   "materiaux": {
+    "pierre": [
+     "#a39a8e",
+     "#b5aa9a",
+     "#8f877c"
+    ],
+    "brique": null,
+    "bois": [
+     "#7a5a3a"
+    ]
+   }
   },
   "toulouse_brique": {
-    "nom": "Toulousain et Midi toulousain (brique rose)",
-    "facades": [[0.80, 0.52, 0.42], [0.84, 0.58, 0.46], [0.76, 0.48, 0.40], [0.92, 0.84, 0.72], [0.86, 0.62, 0.50]],
-    "volets": ["#7f9fbf", "#8fa38a", "#a3a3a0"],
-    "clotures": [0.50, 0.30, 0.20],
-    "departements": ["31", "82", "81", "32", "09", "65"]
+   "nom": "Toulousain, Albigeois, Montalbanais",
+   "departements": [
+    "31",
+    "82",
+    "81",
+    "32",
+    "09",
+    "65"
+   ],
+   "clotures": [
+    0.5,
+    0.3,
+    0.2
+   ],
+   "ancien": {
+    "facades": [
+     "#e9d6bd",
+     "#e3c7a6",
+     "#efdfc8"
+    ],
+    "volets": [
+     "#7f9fbf",
+     "#8fa38a",
+     "#a3a3a0"
+    ]
+   },
+   "moderne": {
+    "facades": [
+     "#efe2cc",
+     "#ead8bd",
+     "#f2e8d6"
+    ],
+    "volets": [
+     "#a3a3a0",
+     "#8a6a4f"
+    ]
+   },
+   "recent": {
+    "facades": [
+     "#f2e9db",
+     "#eadcc6",
+     "#f5efe4",
+     "#d8d1c6"
+    ],
+    "volets": [
+     "#ededea",
+     "#4a4f55"
+    ]
+   },
+   "materiaux": {
+    "pierre": [
+     "#c9b89a"
+    ],
+    "brique": [
+     "#c8836a",
+     "#d08f73",
+     "#bd7863"
+    ],
+    "bois": [
+     "#8a6a4a"
+    ]
+   }
   },
   "pays_basque_bearn": {
-    "nom": "Pays basque et Béarn",
-    "facades": [[0.97, 0.97, 0.95], [0.96, 0.95, 0.92], [0.95, 0.94, 0.90]],
-    "volets": ["#9a1f1f", "#1f5a3a", "#7a1f1f"],
-    "clotures": [0.40, 0.45, 0.15],
-    "departements": ["64"]
+   "nom": "Pays basque et Béarn",
+   "departements": [
+    "64"
+   ],
+   "clotures": [
+    0.4,
+    0.45,
+    0.15
+   ],
+   "ancien": {
+    "facades": [
+     "#f7f6f2",
+     "#f4f2ec",
+     "#f6f4ee"
+    ],
+    "volets": [
+     "#9a1f1f",
+     "#1f5a3a",
+     "#7a1f1f"
+    ]
+   },
+   "moderne": {
+    "facades": [
+     "#f7f6f2",
+     "#f2efe8"
+    ],
+    "volets": [
+     "#9a1f1f",
+     "#1f5a3a"
+    ]
+   },
+   "recent": {
+    "facades": [
+     "#f8f7f4",
+     "#f3f1ec"
+    ],
+    "volets": [
+     "#9a1f1f",
+     "#1f5a3a",
+     "#4a4f55"
+    ]
+   },
+   "materiaux": {
+    "pierre": [
+     "#c9c0b0",
+     "#b8ae9d"
+    ],
+    "brique": null,
+    "bois": [
+     "#7a1f1f"
+    ]
+   }
   },
   "aquitaine": {
-    "nom": "Gironde, Landes, Périgord",
-    "facades": [[0.92, 0.86, 0.72], [0.95, 0.90, 0.80], [0.88, 0.80, 0.64], [0.86, 0.78, 0.62]],
-    "volets": ["#a3a3a0", "#7f97a3", "#8a9a7a", "#5f5f6f"],
-    "clotures": [0.40, 0.45, 0.15],
-    "departements": ["33", "40", "47", "24", "46", "19", "87", "23", "16", "17", "79", "86"]
+   "nom": "Gironde, Landes, Périgord, Charentes, Limousin",
+   "departements": [
+    "33",
+    "40",
+    "47",
+    "24",
+    "46",
+    "19",
+    "87",
+    "23",
+    "16",
+    "17",
+    "79",
+    "86"
+   ],
+   "clotures": [
+    0.4,
+    0.45,
+    0.15
+   ],
+   "ancien": {
+    "facades": [
+     "#e6d6b4",
+     "#dccaa3",
+     "#ecdfc3",
+     "#d4c09a"
+    ],
+    "volets": [
+     "#a3a3a0",
+     "#7f97a3",
+     "#8a9a7a"
+    ]
+   },
+   "moderne": {
+    "facades": [
+     "#efe4cf",
+     "#e8dbc2"
+    ],
+    "volets": [
+     "#a3a3a0",
+     "#8a6a4f"
+    ]
+   },
+   "recent": {
+    "facades": [
+     "#f3ece1",
+     "#ebe1d0",
+     "#d9d4cb"
+    ],
+    "volets": [
+     "#ededea",
+     "#4a4f55"
+    ]
+   },
+   "materiaux": {
+    "pierre": [
+     "#ddcba5",
+     "#d2bf98",
+     "#e4d4b2"
+    ],
+    "brique": null,
+    "bois": [
+     "#8a6a4a"
+    ]
+   }
   },
   "bretagne": {
-    "nom": "Bretagne",
-    "facades": [[0.62, 0.62, 0.60], [0.95, 0.95, 0.93], [0.70, 0.69, 0.66], [0.93, 0.92, 0.88], [0.66, 0.64, 0.60]],
-    "volets": ["#1f3a6f", "#2f5f7f", "#f2f2ee", "#3f6f5f"],
-    "clotures": [0.20, 0.45, 0.35],
-    "departements": ["29", "22", "56", "35", "44"]
+   "nom": "Bretagne et Pays nantais",
+   "departements": [
+    "29",
+    "22",
+    "56",
+    "35",
+    "44"
+   ],
+   "clotures": [
+    0.2,
+    0.45,
+    0.35
+   ],
+   "ancien": {
+    "facades": [
+     "#9e9c97",
+     "#a9a69f",
+     "#8f8d88",
+     "#f1f0ec"
+    ],
+    "volets": [
+     "#1f3a6f",
+     "#2f5f7f",
+     "#3f6f5f"
+    ]
+   },
+   "moderne": {
+    "facades": [
+     "#f1f0ec",
+     "#e9e7e1",
+     "#efede8"
+    ],
+    "volets": [
+     "#1f3a6f",
+     "#f2f2ee"
+    ]
+   },
+   "recent": {
+    "facades": [
+     "#f4f3f0",
+     "#e6e4df",
+     "#d6d4cf"
+    ],
+    "volets": [
+     "#ededea",
+     "#4a4f55"
+    ]
+   },
+   "materiaux": {
+    "pierre": [
+     "#9e9c97",
+     "#8f8d88",
+     "#b0ada6"
+    ],
+    "brique": null,
+    "bois": [
+     "#6f5a46"
+    ]
+   }
   },
   "normandie": {
-    "nom": "Normandie (colombages, brique, silex)",
-    "facades": [[0.93, 0.89, 0.78], [0.72, 0.42, 0.34], [0.90, 0.86, 0.76], [0.78, 0.50, 0.40], [0.95, 0.93, 0.86]],
-    "volets": ["#2f4f3f", "#f2f2ee", "#5f3f2f"],
-    "clotures": [0.15, 0.70, 0.15],
-    "departements": ["14", "50", "61", "27", "76"]
+   "nom": "Normandie",
+   "departements": [
+    "14",
+    "50",
+    "61",
+    "27",
+    "76"
+   ],
+   "clotures": [
+    0.15,
+    0.7,
+    0.15
+   ],
+   "ancien": {
+    "facades": [
+     "#ece3cf",
+     "#e6dcc6",
+     "#b8705c"
+    ],
+    "volets": [
+     "#2f4f3f",
+     "#f2f2ee",
+     "#5f3f2f"
+    ]
+   },
+   "moderne": {
+    "facades": [
+     "#ece6da",
+     "#e4dccd"
+    ],
+    "volets": [
+     "#f2f2ee",
+     "#2f4f3f"
+    ]
+   },
+   "recent": {
+    "facades": [
+     "#f2efe9",
+     "#e2ddd5"
+    ],
+    "volets": [
+     "#ededea",
+     "#4a4f55"
+    ]
+   },
+   "materiaux": {
+    "pierre": [
+     "#d8cdb6",
+     "#c9bea6"
+    ],
+    "brique": [
+     "#a6604f",
+     "#b26a55"
+    ],
+    "bois": [
+     "#5a4030"
+    ]
+   }
   },
   "nord_brique": {
-    "nom": "Nord, Picardie (brique rouge)",
-    "facades": [[0.62, 0.32, 0.26], [0.68, 0.36, 0.28], [0.56, 0.28, 0.24], [0.92, 0.90, 0.84]],
-    "volets": ["#f2f2ee", "#2f2f2f", "#3f5f4f"],
-    "clotures": [0.30, 0.50, 0.20],
-    "departements": ["59", "62", "80", "02", "60"]
+   "nom": "Nord, Picardie, Oise",
+   "departements": [
+    "59",
+    "62",
+    "80",
+    "02",
+    "60"
+   ],
+   "clotures": [
+    0.3,
+    0.5,
+    0.2
+   ],
+   "ancien": {
+    "facades": [
+     "#9e5242",
+     "#a85a46",
+     "#8f4a3d"
+    ],
+    "volets": [
+     "#f2f2ee",
+     "#2f2f2f",
+     "#3f5f4f"
+    ]
+   },
+   "moderne": {
+    "facades": [
+     "#a35c4a",
+     "#e9e4da",
+     "#b06a55"
+    ],
+    "volets": [
+     "#f2f2ee",
+     "#4a4f55"
+    ]
+   },
+   "recent": {
+    "facades": [
+     "#ab6450",
+     "#e8e3da",
+     "#d2ccc2"
+    ],
+    "volets": [
+     "#ededea",
+     "#4a4f55"
+    ]
+   },
+   "materiaux": {
+    "pierre": [
+     "#d6cdbb"
+    ],
+    "brique": [
+     "#9e5242",
+     "#a85a46",
+     "#8f4a3d"
+    ],
+    "bois": [
+     "#6f5a46"
+    ]
+   }
   },
   "ile_de_france": {
-    "nom": "Paris et Île-de-France (pierre de taille, zinc)",
-    "facades": [[0.90, 0.86, 0.76], [0.93, 0.90, 0.82], [0.86, 0.82, 0.72], [0.95, 0.93, 0.88], [0.82, 0.78, 0.70]],
-    "volets": ["#d8d6cf", "#8a8d90", "#f2f2ee"],
-    "clotures": [0.60, 0.30, 0.10],
-    "departements": ["75", "92", "93", "94", "77", "78", "91", "95"]
+   "nom": "Île-de-France",
+   "departements": [
+    "92",
+    "93",
+    "94",
+    "77",
+    "78",
+    "91",
+    "95"
+   ],
+   "clotures": [
+    0.6,
+    0.3,
+    0.1
+   ],
+   "ancien": {
+    "facades": [
+     "#e6dcc6",
+     "#ede5d2",
+     "#ddd2ba"
+    ],
+    "volets": [
+     "#d8d6cf",
+     "#8a8d90",
+     "#f2f2ee"
+    ]
+   },
+   "moderne": {
+    "facades": [
+     "#ebe6dc",
+     "#e1dbd0",
+     "#d4cfc6"
+    ],
+    "volets": [
+     "#a3a3a0",
+     "#f2f2ee"
+    ]
+   },
+   "recent": {
+    "facades": [
+     "#f1eee8",
+     "#e2ded6",
+     "#cfcac2"
+    ],
+    "volets": [
+     "#ededea",
+     "#4a4f55"
+    ]
+   },
+   "materiaux": {
+    "pierre": [
+     "#e6dcc6",
+     "#ede5d2"
+    ],
+    "brique": [
+     "#b57a62",
+     "#a86c58"
+    ],
+    "meuliere": [
+     "#b48a5f",
+     "#a77f56"
+    ],
+    "bois": [
+     "#6f5a46"
+    ]
+   }
   },
   "val_de_loire": {
-    "nom": "Val de Loire, Centre (tuffeau, ardoise)",
-    "facades": [[0.95, 0.93, 0.86], [0.92, 0.90, 0.82], [0.90, 0.86, 0.76], [0.96, 0.95, 0.90]],
-    "volets": ["#a3a3a0", "#7f97a3", "#d8d6cf"],
-    "clotures": [0.50, 0.35, 0.15],
-    "departements": ["45", "41", "37", "18", "36", "28", "49", "72", "53", "85"]
+   "nom": "Val de Loire, Centre, Pays de la Loire",
+   "departements": [
+    "45",
+    "41",
+    "37",
+    "18",
+    "36",
+    "28",
+    "49",
+    "72",
+    "53",
+    "85"
+   ],
+   "clotures": [
+    0.5,
+    0.35,
+    0.15
+   ],
+   "ancien": {
+    "facades": [
+     "#f2eee2",
+     "#ece6d6",
+     "#e6dfcb"
+    ],
+    "volets": [
+     "#a3a3a0",
+     "#7f97a3",
+     "#d8d6cf"
+    ]
+   },
+   "moderne": {
+    "facades": [
+     "#efe9dc",
+     "#e7e0d0"
+    ],
+    "volets": [
+     "#a3a3a0",
+     "#f2f2ee"
+    ]
+   },
+   "recent": {
+    "facades": [
+     "#f3efe8",
+     "#e3ded5"
+    ],
+    "volets": [
+     "#ededea",
+     "#4a4f55"
+    ]
+   },
+   "materiaux": {
+    "pierre": [
+     "#f2eee2",
+     "#e9e3d2"
+    ],
+    "brique": [
+     "#b47460"
+    ],
+    "bois": [
+     "#6f5a46"
+    ]
+   }
   },
   "est": {
-    "nom": "Champagne, Lorraine",
-    "facades": [[0.92, 0.89, 0.80], [0.86, 0.84, 0.78], [0.94, 0.90, 0.80], [0.82, 0.80, 0.74]],
-    "volets": ["#6f4f3f", "#a3a3a0", "#5f6f5f"],
-    "clotures": [0.40, 0.45, 0.15],
-    "departements": ["51", "08", "10", "52", "54", "55", "57", "88"]
+   "nom": "Champagne, Lorraine",
+   "departements": [
+    "51",
+    "08",
+    "10",
+    "52",
+    "54",
+    "55",
+    "57",
+    "88"
+   ],
+   "clotures": [
+    0.4,
+    0.45,
+    0.15
+   ],
+   "ancien": {
+    "facades": [
+     "#e8dfca",
+     "#dcd3bd",
+     "#ece4d1",
+     "#d6cbb2"
+    ],
+    "volets": [
+     "#6f4f3f",
+     "#a3a3a0",
+     "#5f6f5f"
+    ]
+   },
+   "moderne": {
+    "facades": [
+     "#ece6d9",
+     "#e2dacb"
+    ],
+    "volets": [
+     "#a3a3a0",
+     "#6f4f3f"
+    ]
+   },
+   "recent": {
+    "facades": [
+     "#f0ece5",
+     "#e0dbd2"
+    ],
+    "volets": [
+     "#ededea",
+     "#4a4f55"
+    ]
+   },
+   "materiaux": {
+    "pierre": [
+     "#dccfae",
+     "#cfc19f"
+    ],
+    "brique": [
+     "#a8634f"
+    ],
+    "bois": [
+     "#6f5a46"
+    ]
+   }
   },
   "alsace": {
-    "nom": "Alsace (enduits vifs, colombages)",
-    "facades": [[0.95, 0.84, 0.50], [0.92, 0.66, 0.62], [0.70, 0.80, 0.86], [0.78, 0.86, 0.70], [0.96, 0.92, 0.82], [0.93, 0.74, 0.50]],
-    "volets": ["#6f4f2f", "#2f5f3f", "#9a1f1f"],
-    "clotures": [0.30, 0.50, 0.20],
-    "departements": ["67", "68"]
+   "nom": "Alsace",
+   "departements": [
+    "67",
+    "68"
+   ],
+   "clotures": [
+    0.3,
+    0.5,
+    0.2
+   ],
+   "ancien": {
+    "facades": [
+     "#f0d27f",
+     "#e8a89e",
+     "#b3cddb",
+     "#c7dbb3",
+     "#f4e6c8",
+     "#eeb98a"
+    ],
+    "volets": [
+     "#6f4f2f",
+     "#2f5f3f",
+     "#9a1f1f"
+    ]
+   },
+   "moderne": {
+    "facades": [
+     "#f2e6c9",
+     "#ecdcc2",
+     "#e6e0d2"
+    ],
+    "volets": [
+     "#6f4f2f",
+     "#a3a3a0"
+    ]
+   },
+   "recent": {
+    "facades": [
+     "#f3eee4",
+     "#e5ded2",
+     "#efe2c8"
+    ],
+    "volets": [
+     "#ededea",
+     "#4a4f55"
+    ]
+   },
+   "materiaux": {
+    "pierre": [
+     "#c99a84",
+     "#c08e78"
+    ],
+    "brique": null,
+    "bois": [
+     "#6f4f2f"
+    ]
+   }
   },
   "bourgogne_franche_comte": {
-    "nom": "Bourgogne, Franche-Comté (pierre blonde)",
-    "facades": [[0.90, 0.84, 0.70], [0.94, 0.90, 0.80], [0.86, 0.80, 0.66], [0.92, 0.88, 0.78]],
-    "volets": ["#4f6f4f", "#6f4f3f", "#a3a3a0"],
-    "clotures": [0.50, 0.35, 0.15],
-    "departements": ["21", "71", "58", "89", "39", "25", "70", "90"]
+   "nom": "Bourgogne, Franche-Comté",
+   "departements": [
+    "21",
+    "71",
+    "58",
+    "89",
+    "39",
+    "25",
+    "70",
+    "90"
+   ],
+   "clotures": [
+    0.5,
+    0.35,
+    0.15
+   ],
+   "ancien": {
+    "facades": [
+     "#e2d2b0",
+     "#d9c7a2",
+     "#eadcc0"
+    ],
+    "volets": [
+     "#4f6f4f",
+     "#6f4f3f",
+     "#a3a3a0"
+    ]
+   },
+   "moderne": {
+    "facades": [
+     "#ece3d0",
+     "#e4d8c2"
+    ],
+    "volets": [
+     "#a3a3a0",
+     "#6f4f3f"
+    ]
+   },
+   "recent": {
+    "facades": [
+     "#f1ebe1",
+     "#e2dbcf"
+    ],
+    "volets": [
+     "#ededea",
+     "#4a4f55"
+    ]
+   },
+   "materiaux": {
+    "pierre": [
+     "#dccaa4",
+     "#d1bf97",
+     "#e4d5b4"
+    ],
+    "brique": [
+     "#a8634f"
+    ],
+    "bois": [
+     "#6f5a46"
+    ]
+   }
   },
   "rhone_lyonnais": {
-    "nom": "Lyonnais, Beaujolais (pierres dorées)",
-    "facades": [[0.90, 0.78, 0.56], [0.94, 0.86, 0.70], [0.92, 0.82, 0.66], [0.95, 0.92, 0.84]],
-    "volets": ["#5f7f5f", "#a3a3a0", "#7f6f5f"],
-    "clotures": [0.50, 0.35, 0.15],
-    "departements": ["69", "01", "42", "07", "26"]
+   "nom": "Lyonnais, Beaujolais, Ardèche, Drôme",
+   "departements": [
+    "69",
+    "01",
+    "42",
+    "07",
+    "26"
+   ],
+   "clotures": [
+    0.5,
+    0.35,
+    0.15
+   ],
+   "ancien": {
+    "facades": [
+     "#e2c08a",
+     "#d9b27a",
+     "#ecd2a6",
+     "#e8c9a0"
+    ],
+    "volets": [
+     "#5f7f5f",
+     "#a3a3a0",
+     "#7f6f5f"
+    ]
+   },
+   "moderne": {
+    "facades": [
+     "#eee2c9",
+     "#e7d6b8"
+    ],
+    "volets": [
+     "#a3a3a0",
+     "#5f7f5f"
+    ]
+   },
+   "recent": {
+    "facades": [
+     "#f2ebdf",
+     "#e4dccf"
+    ],
+    "volets": [
+     "#ededea",
+     "#4a4f55"
+    ]
+   },
+   "materiaux": {
+    "pierre": [
+     "#d9b27a",
+     "#cfa66d",
+     "#e2c08a"
+    ],
+    "brique": null,
+    "bois": [
+     "#6f5a46"
+    ]
+   }
   },
   "auvergne": {
-    "nom": "Auvergne (pierre volcanique)",
-    "facades": [[0.46, 0.44, 0.42], [0.56, 0.54, 0.50], [0.86, 0.82, 0.74], [0.50, 0.48, 0.45]],
-    "volets": ["#6f4f3f", "#4f5f4f", "#a3a3a0"],
-    "clotures": [0.20, 0.40, 0.40],
-    "departements": ["63", "15", "43", "03"]
+   "nom": "Auvergne",
+   "departements": [
+    "63",
+    "15",
+    "43",
+    "03"
+   ],
+   "clotures": [
+    0.2,
+    0.4,
+    0.4
+   ],
+   "ancien": {
+    "facades": [
+     "#7a7570",
+     "#8c867f",
+     "#6c6762",
+     "#d9d1c2"
+    ],
+    "volets": [
+     "#6f4f3f",
+     "#4f5f4f",
+     "#a3a3a0"
+    ]
+   },
+   "moderne": {
+    "facades": [
+     "#e6dfd2",
+     "#ddd5c6"
+    ],
+    "volets": [
+     "#a3a3a0",
+     "#6f4f3f"
+    ]
+   },
+   "recent": {
+    "facades": [
+     "#efebe4",
+     "#dcd7cf"
+    ],
+    "volets": [
+     "#ededea",
+     "#4a4f55"
+    ]
+   },
+   "materiaux": {
+    "pierre": [
+     "#6c6762",
+     "#7a7570",
+     "#5f5a56"
+    ],
+    "brique": null,
+    "bois": [
+     "#5f4a36"
+    ]
+   }
   },
   "alpes": {
-    "nom": "Alpes et Savoie (pierre et bois)",
-    "facades": [[0.80, 0.78, 0.74], [0.62, 0.48, 0.34], [0.90, 0.88, 0.82], [0.70, 0.56, 0.40]],
-    "volets": ["#6f4f2f", "#5f3f2f", "#4f5f4f"],
-    "clotures": [0.20, 0.40, 0.40],
-    "departements": ["73", "74", "38"]
+   "nom": "Alpes et Savoie",
+   "departements": [
+    "73",
+    "74",
+    "38"
+   ],
+   "clotures": [
+    0.2,
+    0.4,
+    0.4
+   ],
+   "ancien": {
+    "facades": [
+     "#cfc8bb",
+     "#a07d5a",
+     "#e6dfd0"
+    ],
+    "volets": [
+     "#6f4f2f",
+     "#5f3f2f",
+     "#4f5f4f"
+    ]
+   },
+   "moderne": {
+    "facades": [
+     "#ebe5d9",
+     "#a8845f",
+     "#e0d8c8"
+    ],
+    "volets": [
+     "#6f4f2f",
+     "#a3a3a0"
+    ]
+   },
+   "recent": {
+    "facades": [
+     "#f0ebe2",
+     "#b08b64",
+     "#dcd6cc"
+    ],
+    "volets": [
+     "#6f4f2f",
+     "#4a4f55"
+    ]
+   },
+   "materiaux": {
+    "pierre": [
+     "#bdb5a6",
+     "#a9a193"
+    ],
+    "brique": null,
+    "bois": [
+     "#8a6440",
+     "#7a5634"
+    ]
+   }
   },
   "defaut": {
-    "nom": "France (par défaut)",
-    "facades": [[0.93, 0.87, 0.74], [0.96, 0.94, 0.88], [0.90, 0.76, 0.58], [0.94, 0.82, 0.64], [0.97, 0.96, 0.93]],
-    "volets": ["#7a8f86"],
-    "clotures": [0.50, 0.30, 0.20],
-    "departements": []
+   "nom": "France (par défaut)",
+   "departements": [],
+   "clotures": [
+    0.5,
+    0.3,
+    0.2
+   ],
+   "ancien": {
+    "facades": [
+     "#ecdcbc",
+     "#e6cfa6",
+     "#efe1c6"
+    ],
+    "volets": [
+     "#7a8f86",
+     "#a3a3a0"
+    ]
+   },
+   "moderne": {
+    "facades": [
+     "#efe5d2",
+     "#e9dcc6"
+    ],
+    "volets": [
+     "#a3a3a0"
+    ]
+   },
+   "recent": {
+    "facades": [
+     "#f3eee6",
+     "#e3ded6"
+    ],
+    "volets": [
+     "#ededea",
+     "#4a4f55"
+    ]
+   },
+   "materiaux": {
+    "pierre": [
+     "#cdbd9e"
+    ],
+    "brique": [
+     "#b0705a"
+    ],
+    "bois": [
+     "#6f5a46"
+    ]
+   }
   }
+ },
+ "communes": {
+  "31555": {
+   "nom": "Toulouse",
+   "ancien": {
+    "facades": [
+     "#c8836a",
+     "#d08f73",
+     "#c47c66",
+     "#e3b8a0"
+    ],
+    "volets": [
+     "#7f9fbf",
+     "#8fa38a",
+     "#a3a3a0"
+    ]
+   },
+   "moderne": {
+    "facades": [
+     "#d9a48c",
+     "#efe2cc",
+     "#e8d6c0"
+    ],
+    "volets": [
+     "#a3a3a0"
+    ]
+   }
+  },
+  "81004": {
+   "nom": "Albi",
+   "ancien": {
+    "facades": [
+     "#c47660",
+     "#cc8068",
+     "#b86e5a"
+    ],
+    "volets": [
+     "#7f9fbf",
+     "#a3a3a0"
+    ]
+   }
+  },
+  "82121": {
+   "nom": "Montauban",
+   "ancien": {
+    "facades": [
+     "#c8836a",
+     "#d49478",
+     "#bf7a63"
+    ],
+    "volets": [
+     "#7f9fbf",
+     "#a3a3a0"
+    ]
+   }
+  },
+  "66136": {
+   "nom": "Perpignan",
+   "ancien": {
+    "facades": [
+     "#d8a07a",
+     "#e3b88e",
+     "#cf9372",
+     "#ecd0aa",
+     "#e6b5a0",
+     "#f0dcb8"
+    ],
+    "volets": [
+     "#4f6f8f",
+     "#5f8a7a",
+     "#7a3b3b"
+    ]
+   },
+   "materiaux": {
+    "pierre": [
+     "#c9a27f",
+     "#b99474",
+     "#d4b08c"
+    ]
+   }
+  },
+  "66053": {
+   "nom": "Collioure",
+   "ancien": {
+    "facades": [
+     "#f2c46f",
+     "#e9978a",
+     "#9fc3d6",
+     "#f0d9a0",
+     "#e7a873",
+     "#c9d9a6",
+     "#f3e0c4"
+    ],
+    "volets": [
+     "#2f6f8f",
+     "#3f8a6a",
+     "#9a2f2f",
+     "#e0b03f"
+    ]
+   }
+  },
+  "66016": {
+   "nom": "Banyuls-sur-Mer",
+   "ancien": {
+    "facades": [
+     "#f0c98a",
+     "#e8a58f",
+     "#efdcb6",
+     "#a9c7d8"
+    ],
+    "volets": [
+     "#2f6f8f",
+     "#3f8a6a",
+     "#9a2f2f"
+    ]
+   }
+  },
+  "66148": {
+   "nom": "Port-Vendres",
+   "ancien": {
+    "facades": [
+     "#efc883",
+     "#e3a58f",
+     "#f2e0bf",
+     "#b8cfd9"
+    ],
+    "volets": [
+     "#2f6f8f",
+     "#3f8a6a"
+    ]
+   }
+  },
+  "66049": {
+   "nom": "Céret",
+   "ancien": {
+    "facades": [
+     "#e2c19c",
+     "#d9ad8a",
+     "#ecd6b6"
+    ],
+    "volets": [
+     "#5f8a7a",
+     "#4f6f8f"
+    ]
+   }
+  },
+  "66234": {
+   "nom": "Villefranche-de-Conflent",
+   "ancien": {
+    "facades": [
+     "#c9a78f",
+     "#bf9c86",
+     "#d6b9a0"
+    ],
+    "volets": [
+     "#7a3b3b",
+     "#5f6f5f"
+    ]
+   },
+   "materiaux": {
+    "pierre": [
+     "#c99c88",
+     "#bd8f7c",
+     "#d6ab96"
+    ]
+   }
+  },
+  "11069": {
+   "nom": "Carcassonne",
+   "ancien": {
+    "facades": [
+     "#d9c7a2",
+     "#cdb995",
+     "#e2d2b0"
+    ],
+    "volets": [
+     "#7f97a3",
+     "#8a6a4f"
+    ]
+   }
+  },
+  "34172": {
+   "nom": "Montpellier",
+   "ancien": {
+    "facades": [
+     "#ebdcbc",
+     "#e3cfa8",
+     "#f0e4c9"
+    ],
+    "volets": [
+     "#a3a3a0",
+     "#7f97a3"
+    ]
+   }
+  },
+  "30189": {
+   "nom": "Nîmes",
+   "ancien": {
+    "facades": [
+     "#e6d4ad",
+     "#dcc79c",
+     "#efe0bf"
+    ],
+    "volets": [
+     "#7f97a3",
+     "#a3a3a0"
+    ]
+   }
+  },
+  "13055": {
+   "nom": "Marseille",
+   "ancien": {
+    "facades": [
+     "#ead2a8",
+     "#e2c298",
+     "#f0dcbb",
+     "#dcb391"
+    ],
+    "volets": [
+     "#7f9fbf",
+     "#a3a3a0",
+     "#8fae8a"
+    ]
+   }
+  },
+  "06088": {
+   "nom": "Nice",
+   "ancien": {
+    "facades": [
+     "#e9b77a",
+     "#d98a62",
+     "#efcb90",
+     "#e4a27a",
+     "#f1d6a8"
+    ],
+    "volets": [
+     "#5f8f6f",
+     "#4f7f6f"
+    ]
+   }
+  },
+  "84007": {
+   "nom": "Avignon",
+   "ancien": {
+    "facades": [
+     "#e6d2ac",
+     "#dcc39a"
+    ],
+    "volets": [
+     "#8fae8a",
+     "#7f9fbf"
+    ]
+   }
+  },
+  "33063": {
+   "nom": "Bordeaux",
+   "ancien": {
+    "facades": [
+     "#ecdfc0",
+     "#e4d4b1",
+     "#f0e6cc"
+    ],
+    "volets": [
+     "#a3a3a0",
+     "#d8d6cf"
+    ]
+   }
+  },
+  "64102": {
+   "nom": "Bayonne",
+   "ancien": {
+    "facades": [
+     "#f6f4ee",
+     "#f2efe8"
+    ],
+    "volets": [
+     "#9a1f1f",
+     "#1f5a3a",
+     "#1f3a6f"
+    ]
+   }
+  },
+  "75056": {
+   "nom": "Paris",
+   "ancien": {
+    "facades": [
+     "#e8dec8",
+     "#efe7d4",
+     "#ded3bb",
+     "#e4d9c2"
+    ],
+    "volets": [
+     "#d8d6cf",
+     "#2f2f2f"
+    ]
+   },
+   "moderne": {
+    "facades": [
+     "#e6e1d8",
+     "#d6d1c8",
+     "#cbc6be"
+    ],
+    "volets": [
+     "#a3a3a0"
+    ]
+   },
+   "materiaux": {
+    "pierre": [
+     "#e8dec8",
+     "#efe7d4",
+     "#ded3bb"
+    ]
+   }
+  },
+  "69123": {
+   "nom": "Lyon",
+   "ancien": {
+    "facades": [
+     "#e6b98a",
+     "#ecc79c",
+     "#d9a877",
+     "#efd4ad",
+     "#e8b6a0"
+    ],
+    "volets": [
+     "#a3a3a0",
+     "#5f7f5f"
+    ]
+   }
+  },
+  "67482": {
+   "nom": "Strasbourg",
+   "ancien": {
+    "facades": [
+     "#f0d27f",
+     "#e8a89e",
+     "#b3cddb",
+     "#c7dbb3",
+     "#c99a84"
+    ],
+    "volets": [
+     "#6f4f2f",
+     "#2f5f3f"
+    ]
+   }
+  },
+  "59350": {
+   "nom": "Lille",
+   "ancien": {
+    "facades": [
+     "#9e5242",
+     "#a85a46",
+     "#e8dcc0",
+     "#8f4a3d"
+    ],
+    "volets": [
+     "#f2f2ee",
+     "#2f2f2f"
+    ]
+   }
+  },
+  "35238": {
+   "nom": "Rennes",
+   "ancien": {
+    "facades": [
+     "#ece7dc",
+     "#c4a07c",
+     "#9e9c97"
+    ],
+    "volets": [
+     "#1f3a6f",
+     "#a3a3a0"
+    ]
+   }
+  },
+  "44109": {
+   "nom": "Nantes",
+   "ancien": {
+    "facades": [
+     "#f0ece2",
+     "#e6e0d2"
+    ],
+    "volets": [
+     "#a3a3a0",
+     "#d8d6cf"
+    ]
+   }
+  },
+  "74010": {
+   "nom": "Annecy",
+   "ancien": {
+    "facades": [
+     "#efc98e",
+     "#e9a98a",
+     "#f2dcb0",
+     "#cfd9c0"
+    ],
+    "volets": [
+     "#6f4f2f",
+     "#4f6f4f"
+    ]
+   }
+  },
+  "2A004": {
+   "nom": "Ajaccio",
+   "ancien": {
+    "facades": [
+     "#e9c88f",
+     "#e3b48e",
+     "#efd8ab",
+     "#d9a98a"
+    ],
+    "volets": [
+     "#6f8f7a",
+     "#7f8f9f"
+    ]
+   }
+  },
+  "2B033": {
+   "nom": "Bastia",
+   "ancien": {
+    "facades": [
+     "#e6c592",
+     "#ddb08c",
+     "#ecd4ac",
+     "#c9bba2"
+    ],
+    "volets": [
+     "#6f8f7a",
+     "#7f8f9f"
+    ]
+   }
+  }
+ },
+ "activite": {
+  "_lisez_moi": "Bâtiments d'activité, partout en France : bardage sans fenêtres. commercial = hypermarchés et galeries (blanc, gris clair, bandeau de couleur) ; entrepot = logistique et industrie ; agricole = hangars et chais.",
+  "commercial": {
+   "facades": [
+    "#f4f4f2",
+    "#ecedeb",
+    "#e2e4e5",
+    "#f6f5f0"
+   ],
+   "bandeaux": [
+    "#d6202a",
+    "#1e5bc6",
+    "#f0a400",
+    "#00915a",
+    "#e3001b",
+    "#0050aa"
+   ]
+  },
+  "entrepot": {
+   "facades": [
+    "#c9ccce",
+    "#b9bdc0",
+    "#d6d8d6",
+    "#a9aeb2",
+    "#cfc9bc"
+   ]
+  },
+  "agricole": {
+   "facades": [
+    "#c8bfa8",
+    "#b5ab92",
+    "#a7ad9a",
+    "#d2c9b2",
+    "#9aa092"
+   ]
+  }
+ }
 }

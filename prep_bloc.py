@@ -16,7 +16,7 @@ os.makedirs(fetch.D, exist_ok=True)
 t0 = time.time()
 DEPT = os.environ.get("DEPT", "66")                                       # département du bloc (style régional)
 json.dump(dict(bbox=bb, marge=MARGE, dep=DEPT), open(os.path.join(fetch.D, "v_bbox.json"), "w"))
-for lay in ("BDTOPO_V3:batiment", "BDTOPO_V3:troncon_de_route", "BDTOPO_V3:equipement_de_transport"):
+for lay in ("BDTOPO_V3:batiment", "BDTOPO_V3:troncon_de_route", "BDTOPO_V3:equipement_de_transport", "BDTOPO_V3:commune"):
     fetch.wfs(lay, bbox=bbm)
 fetch.wfs("CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle", bbox=bbm, name="v_cadastre")
 bbr = [XO - MARGE, YO - MARGE, XO + COTE + MARGE, YO + COTE + MARGE]

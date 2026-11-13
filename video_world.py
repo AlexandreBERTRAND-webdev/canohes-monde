@@ -351,12 +351,48 @@ PAL = np.array([[0.93, 0.87, 0.74], [0.96, 0.94, 0.88], [0.90, 0.76, 0.58], [0.9
                 [0.83, 0.74, 0.60], [0.95, 0.86, 0.60], [0.92, 0.72, 0.62], [0.86, 0.80, 0.72], [0.98, 0.90, 0.78]])
 # style régional (styles/regions.json) : couleurs de façades, volets, clôtures, d'après le département du bloc
 _STY = json.load(open(os.path.join(HERE, "styles", "regions.json")))
+REG, COMM, ACT = _STY["regions"], _STY.get("communes", {}), _STY.get("activite", {})
 DEP = str(json.load(open(os.path.join(D, "v_bbox.json"))).get("dep", "66"))
-STYLE = next((k_ for k_, v_ in _STY.items() if not k_.startswith("_") and DEP in v_.get("departements", [])), "defaut")
+STYLE = next((k_ for k_, v_ in REG.items() if DEP in v_.get("departements", [])), "defaut")
+RS = REG[STYLE]
+hexrgb = lambda h: np.array([int(h[k_:k_ + 2], 16) / 255 for k_ in (1, 3, 5)])
 if BLOC:
-    PAL = np.array(_STY[STYLE]["facades"])
-VOLETS = _STY[STYLE]["volets"][rng.integers(len(_STY[STYLE]["volets"]))]
-CLO = np.cumsum(_STY[STYLE]["clotures"]) / sum(_STY[STYLE]["clotures"])
+    PAL = np.array([hexrgb(h) for h in RS["ancien"]["facades"]])
+VOLETS = RS["ancien"]["volets"][rng.integers(len(RS["ancien"]["volets"]))]           # volets des maisons anciennes et modernes
+VOLETS2 = RS["recent"]["volets"][rng.integers(len(RS["recent"]["volets"]))]          # volets des maisons récentes (PVC blanc ou anthracite)
+CLO = np.cumsum(RS["clotures"]) / sum(RS["clotures"])
+# communes du bloc (BD TOPO), pour les couleurs propres à une ville
+_COMS = []
+if os.path.exists(os.path.join(D, "commune.geojson")):
+    for f in load("commune"):
+        if str(f["properties"].get("code_insee")) in COMM:
+            _COMS.append((str(f["properties"]["code_insee"]), loc(shape(f["geometry"]))))
+MAT = {"1": "pierre", "2": "meuliere", "4": "brique", "6": "bois"}
+
+
+def style_batiment(b, c, g, nvois):
+    """Couleur de façade d'un bâtiment et groupe de volets : activité, époque (année BD TOPO ou mitoyenneté), commune, matériau apparent."""
+    p = b["p"]
+    usage, nat = p.get("usage_1") or "", p.get("nature") or ""
+    if "Commercial" in usage and g.area > 600:
+        return hexrgb(ACT["commercial"]["facades"][rng.integers(len(ACT["commercial"]["facades"]))]), "commercial"
+    if "Industriel" in usage or "Industriel" in nat:
+        return hexrgb(ACT["entrepot"]["facades"][rng.integers(len(ACT["entrepot"]["facades"]))]), "activite"
+    if "Agricole" in usage or nat in ("Serre", "Agricole"):
+        return hexrgb(ACT["agricole"]["facades"][rng.integers(len(ACT["agricole"]["facades"]))]), "activite"
+    an = str(p.get("date_d_apparition") or "")[:4]
+    if an.isdigit():
+        epoque = "ancien" if int(an) < 1946 else "moderne" if int(an) < 1990 else "recent"
+    else:
+        epoque = "ancien" if (nvois >= 2 and g.area < 320) else "moderne"
+    com = next((COMM[k_] for k_, poly in _COMS if poly.contains(c)), {})
+    mats = dict(RS.get("materiaux") or {}); mats.update(com.get("materiaux") or {})
+    m_ = MAT.get(str(p.get("materiaux_des_murs") or "")[:1])
+    if m_ and mats.get(m_) and epoque != "recent":
+        pal = mats[m_]
+    else:
+        pal = (com.get(epoque) or RS.get(epoque) or RS["ancien"])["facades"]
+    return hexrgb(pal[rng.integers(len(pal))]), epoque
 
 
 class Acc:
@@ -376,6 +412,7 @@ class Acc:
 
 
 roofs, wallsW, plain = Acc(["pos", "col"] if BLOC else ["pos"]), Acc(["pos", "uv", "col"]), Acc(["pos", "col"])
+wallsR = Acc(["pos", "uv", "col"])                                         # murs des maisons récentes (autres volets)
 gtree = STRtree([b["g"] for b in B])
 SLOPE, CAP = 0.36, 3.2
 nfail = 0
@@ -387,11 +424,20 @@ for bi, b in enumerate(B):
     z_ref = float(np.median(zs)); z_bot = float(zs.min()) - 0.8
     z_wall = z_ref + b["eave"]
     tint = PAL[rng.integers(len(PAL))] * rng.uniform(0.94, 1.03)
+    epoque = "ancien"
+    if BLOC:
+        _nv = len(gtree.query(g.buffer(0.6))) - 1
+        tint, epoque = style_batiment(b, c, g, _nv)
+        tint = tint * rng.uniform(0.95, 1.03)
     rc_ = ortho_rgb(c.x, c.y, 3)
     tuile = rc_[0] > rc_[1] * 1.12 and rc_[0] > rc_[2] * 1.22
     hangar = b["p"].get("nature") in ("Industriel, agricole ou commercial", "Serre", "Tribune") or (not tuile and g.area > 450)
-    if hangar:
+    if BLOC and epoque in ("commercial", "activite"):
+        hangar = True                                                          # bardage sans fenêtres, couleur déjà choisie
+    elif hangar:
         tint = np.array([0.80, 0.82, 0.83]) * rng.uniform(0.85, 1.05)          # bardage clair, sans fenêtres
+    elif BLOC and not tuile and epoque == "ancien":
+        pass                                                                   # toit plat en centre ancien : terrasse, on garde la couleur
     elif not tuile:
         tint = np.array([[0.97, 0.97, 0.95], [0.93, 0.93, 0.92], [0.96, 0.93, 0.86]][rng.integers(3)]) * rng.uniform(0.96, 1.02)   # toit plat : maison récente, enduit blanc
     b["z_ref"], b["z_wall"] = z_ref, z_wall
@@ -455,8 +501,17 @@ for bi, b in enumerate(B):
             pp += quad; pc += [tint] * 6
     for tri in gab:
         pp += tri; pc += [tint] * 3
+    if BLOC and epoque == "commercial" and wl:                                # bandeau de couleur en haut du bardage (hypermarché, galerie)
+        bc = hexrgb(ACT["commercial"]["bandeaux"][rng.integers(len(ACT["commercial"]["bandeaux"]))])
+        for a_, b_ in wl:
+            if float(np.hypot(*(b_ - a_))) < 4:
+                continue
+            nn = np.array([b_[1] - a_[1], a_[0] - b_[0]]); nn = nn / (np.hypot(*nn) + 1e-9) * 0.06
+            a2, b2 = a_ + nn, b_ + nn
+            pp += [[a2[0], a2[1], z_wall - 1.6], [b2[0], b2[1], z_wall - 1.6], [b2[0], b2[1], z_wall - 0.5], [a2[0], a2[1], z_wall - 1.6], [b2[0], b2[1], z_wall - 0.5], [a2[0], a2[1], z_wall - 0.5]]
+            pc += [bc] * 6
     if wp:
-        wallsW.add(c.x, c.y, dict(pos=wp, uv=wu, col=wc))
+        (wallsR if (BLOC and epoque == "recent") else wallsW).add(c.x, c.y, dict(pos=wp, uv=wu, col=wc))
     if pp:
         plain.add(c.x, c.y, dict(pos=pp, col=pc))
 log("toits faits, replis:", nfail)
@@ -1060,7 +1115,7 @@ for i in range(NT):
     for j in range(NT):
         t = {}
         t["terrain"] = dict(pos=put(terr[(i, j)]["pos"]))
-        for nm, acc in (("roofs", roofs), ("walls", wallsW), ("plain", plain), ("trees", trees), ("lamps", lamps), ("over", over)):
+        for nm, acc in (("roofs", roofs), ("walls", wallsW), ("walls2", wallsR), ("plain", plain), ("trees", trees), ("lamps", lamps), ("over", over)):
             o = acc.out().get((i, j))
             if o:
                 t[nm] = {a: put(o[a]) for a in o}
@@ -1239,7 +1294,7 @@ if GAME:
             garde.append(s_)
     signs = garde
     log(f"panneaux de direction : {len(signs)} sur {len(groupes)} carrefours du réseau principal")
-    json.dump(dict(named=named, gs=GS, world=WORLD, zedge=float(zedge), cote=COTE, zo=ZO, style=STYLE, volets=VOLETS, villes=[[n_, np.round(np.asarray((q_.exterior if q_.geom_type == "Polygon" else max(q_.geoms, key=lambda r_: r_.area).exterior).simplify(4).coords), 1).tolist()] for n_, p_, _ in villes for q_ in [p_.intersection(wbox.buffer(5))] if not q_.is_empty and q_.geom_type in ("Polygon", "MultiPolygon")], shops=shops, signs=signs, ponts=ponts_out, agglo=agglo, xo=XO, yo=YO,
+    json.dump(dict(named=named, gs=GS, world=WORLD, zedge=float(zedge), cote=COTE, zo=ZO, style=STYLE, volets=VOLETS, volets2=VOLETS2, villes=[[n_, np.round(np.asarray((q_.exterior if q_.geom_type == "Polygon" else max(q_.geoms, key=lambda r_: r_.area).exterior).simplify(4).coords), 1).tolist()] for n_, p_, _ in villes for q_ in [p_.intersection(wbox.buffer(5))] if not q_.is_empty and q_.geom_type in ("Polygon", "MultiPolygon")], shops=shops, signs=signs, ponts=ponts_out, agglo=agglo, xo=XO, yo=YO,
                    mairie=([LM["Mairie"][0] - XO, LM["Mairie"][1] - YO] if "Mairie" in LM else next(([s_[0], s_[1]] for s_ in shops if s_[5] == "townhall"), [COTE / 2, COTE / 2]))), open(os.path.join(OUT, "extra.json"), "w"))
 # plan de contrôle
 import matplotlib  # noqa: E402

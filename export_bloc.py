@@ -26,7 +26,7 @@ def put(a):
 tiles, ntri = {}, 0
 for key, t in M["tiles"].items():
     o = {}
-    for nm in ("roofs", "walls", "plain", "trees", "lamps", "over"):
+    for nm in ("roofs", "walls", "walls2", "plain", "trees", "lamps", "over"):
         if nm not in t or "pos" not in t[nm]:
             continue
         pos = arr(t[nm]["pos"]).reshape(-1, 3)
@@ -47,7 +47,7 @@ hts = put(np.clip(np.round(Zg * HSC), 0, 65535).astype("<u2"))
 occ = put(np.packbits(E["occ"], axis=1))
 roads = [[np.round(np.asarray(p), 1).tolist(), k, n] for p, k, n in X["named"]]
 man = dict(v=1, world=W, sc=SC, ts=M["ts"], nt=M["nt"], gs=X["gs"], gn=int(Zg.shape[0]), hsc=HSC, zo=X["zo"], occn=X["cote"],
-           tiles=tiles, hts=hts, occ=occ, roads=roads, shops=X.get("shops", []), signs=X.get("signs", []), ponts=X.get("ponts", []), agglo=X.get("agglo", []), villes=X.get("villes", []), style=X.get("style", "defaut"), volets=X.get("volets", "#7a8f86"))
+           tiles=tiles, hts=hts, occ=occ, roads=roads, shops=X.get("shops", []), signs=X.get("signs", []), ponts=X.get("ponts", []), agglo=X.get("agglo", []), villes=X.get("villes", []), style=X.get("style", "defaut"), volets=X.get("volets", "#7a8f86"), volets2=X.get("volets2", "#ededea"))
 json.dump(man, open(os.path.join(DEST, "m.json"), "w"), separators=(",", ":"), ensure_ascii=False)
 open(os.path.join(DEST, "g.bin"), "wb").write(gzip.compress(bytes(blob), 9, mtime=0))
 t_src = os.path.join(RAW, "teinte.jpg")
