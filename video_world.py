@@ -226,7 +226,10 @@ for W in WAY[1:]:
     tgt = nearest(*W)
     if tgt == cur:
         continue
-    path = nx.shortest_path(G, cur, tgt, weight=wfun)          # respecte les sens uniques
+    try:
+        path = nx.shortest_path(G, cur, tgt, weight=wfun)      # respecte les sens uniques
+    except (nx.NetworkXNoPath, nx.NodeNotFound):
+        continue                                               # réseau en morceaux (bloc de bord) : on saute cette étape
     for u, v in zip(path[:-1], path[1:]):
         d = G.edges[u, v]
         used[frozenset((u, v))] = used.get(frozenset((u, v)), 0) + 1
@@ -234,6 +237,8 @@ for W in WAY[1:]:
         for q in d["pts"][(1 if route_pts else 0):]:
             route_pts.append(q); route_names.append(d["name"]); route_off.append(off)
     cur = tgt
+if len(route_pts) < 2:                                         # aucun trajet possible : trajet fictif au centre du bloc
+    route_pts, route_names, route_off = [(COTE / 2 - 40, COTE / 2), (COTE / 2 + 40, COTE / 2)], ["", ""], [0.0, 0.0]
 route = LineString(route_pts)
 log(f"itinéraire: {route.length:.0f} m")
 # rééchantillonnage tous les 0,5 m puis lissage des virages
@@ -1052,7 +1057,7 @@ if GAME:
     COM_AM = {"restaurant", "cafe", "bar", "pub", "fast_food", "ice_cream", "pharmacy", "bank", "post_office", "fuel", "doctors", "dentist", "car_wash"}
     osm_r = ET.parse(os.path.join(D, "osm.xml")).getroot()
     osm_n = {n.get("id"): (float(n.get("lon")), float(n.get("lat"))) for n in osm_r.iter("node")}
-    btree, bgeo = STRtree([b["g"] for b in B]), [b["g"] for b in B]
+    btree, bgeo = STRtree([b["g"] for b in B] or [Point(0, 0)]), [b["g"] for b in B]
     shops = []
     for e in list(osm_r.iter("node")) + list(osm_r.iter("way")):
         tg = {t.get("k"): t.get("v") for t in e.findall("tag")}
@@ -1072,9 +1077,9 @@ if GAME:
             continue
         pt = Point(x, y)
         _, _, _, ax_ = bord(x, y)                                             # point sur l'axe de la rue la plus proche
-        k_ = int(btree.nearest(pt))
-        bg_ = bgeo[k_]
-        if bg_.distance(pt) < 25:
+        k_ = btree.nearest(pt) if bgeo else None
+        bg_ = bgeo[int(k_)] if k_ is not None else None
+        if bg_ is not None and bg_.distance(pt) < 25:
             ring = bg_.exterior if bg_.geom_type == "Polygon" else max(bg_.geoms, key=lambda q: q.area).exterior
             f_ = np.array(ring.interpolate(ring.project(Point(ax_))).coords[0])   # point de la façade le plus proche de la rue
             n_ = np.asarray(ax_) - f_
