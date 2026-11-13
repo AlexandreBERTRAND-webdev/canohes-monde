@@ -15,7 +15,7 @@ if not os.path.exists(SEL_F):
 SEL = open(SEL_F).read().strip()
 CLE_RESEND = os.path.expanduser("~/.config/sacha/resend.key")
 ORIGINES = {"https://alexandrebertrand-webdev.github.io", "https://canohes-balade.pages.dev", "https://bertrand.al"}
-EXPEDITEUR = "Metaverse France <jeu@bertrand.al>"
+EXPEDITEUR = "Jumeau numérique de la France <jeu@bertrand.al>"
 verrou = threading.Lock()
 
 
@@ -54,12 +54,12 @@ def trop(cle, n, fenetre):
 
 
 def envoyer_code(email, code):
-    texte = (f"Bonjour,\n\nVoici ton code pour Metaverse France : {code}\n\nIl est valable 15 minutes. "
+    texte = (f"Bonjour,\n\nVoici ton code pour le Jumeau numérique de la France : {code}\n\nIl est valable 15 minutes. "
              "Si tu n'as rien demandé, tu peux ignorer ce message.\n\n"
-             "Metaverse France est un jeu gratuit et non commercial, créé par Alexandre Bertrand. "
+             "Le Jumeau numérique de la France est un projet personnel, gratuit et non commercial, créé par Alexandre Bertrand. Ce n'est pas un service de l'État. "
              "Pas de publicité, pas de spam : tu ne recevras que des messages liés au jeu.\n"
              "Une question technique : alexandre@bertrand.al\n")
-    corps = json.dumps({"from": EXPEDITEUR, "to": [email], "subject": f"Ton code Metaverse France : {code}", "text": texte,
+    corps = json.dumps({"from": EXPEDITEUR, "to": [email], "subject": f"Ton code Jumeau numérique de la France : {code}", "text": texte,
                         "reply_to": "alexandre@bertrand.al"}).encode()
     req = urllib.request.Request("https://api.resend.com/emails", data=corps, method="POST",
                                  headers={"Authorization": "Bearer " + open(CLE_RESEND).read().strip(), "Content-Type": "application/json", "User-Agent": "balade-en-roussillon/1.0"})

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Metaverse France</title>
+<title>Jumeau numérique de la France</title>
 <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -39,7 +39,7 @@ canvas#gl{position:fixed; inset:0; width:100%; height:100%; display:block; touch
 .pedale.actif{background:rgba(255,210,60,.38)}
 body.tactile .pedale{display:flex} body.tactile #aide{bottom:auto; top:50%}
 #charge{position:fixed; inset:0; background:#16202a; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:24px; text-align:center}
-#charge h1{font-family:var(--titre); font-weight:400; font-size:clamp(44px,12vw,96px); letter-spacing:.07em; margin:0; line-height:1}
+#charge h1{font-family:var(--titre); font-weight:400; font-size:clamp(30px,7vw,64px); letter-spacing:.07em; margin:0; line-height:1}
 #charge p{margin:0; opacity:.85; font-size:15px}
 #barre{width:min(320px,70vw); height:6px; border-radius:3px; background:rgba(255,255,255,.18); overflow:hidden}
 #barre b{display:block; height:100%; width:4%; background:var(--accent); transition:width .3s}
@@ -71,7 +71,7 @@ body.tactile #credit{display:none}
 </style>
 </head>
 <body>
-<canvas id="gl" tabindex="0" aria-label="Balade en voiture dans les Pyrénées-Orientales"></canvas>
+<canvas id="gl" tabindex="0" aria-label="Jumeau numérique de la France : balade en 3D"></canvas>
 <canvas id="mini" width="264" height="264"></canvas>
 <button id="retour" type="button">Retour au départ</button>
 <button id="vmax" type="button" aria-label="Vitesse maximale">Max 200</button>
@@ -82,7 +82,7 @@ body.tactile #credit{display:none}
 <button class="pedale" id="droite" type="button" aria-label="Tourner à droite">▶</button>
 <button class="pedale" id="gaz" type="button" aria-label="Accélérer">▲</button>
 <button class="pedale" id="frein" type="button" aria-label="Freiner ou reculer">▼</button>
-<div id="auteur">Jeu créé par Alexandre BERTRAND · <a href="mailto:alexandre@bertrand.al">alexandre@bertrand.al</a> · <a href="https://bertrand.al/exandre/" target="_blank" rel="noopener">bertrand.al/exandre</a></div>
+<div id="auteur">Jumeau numérique de la France, projet personnel non officiel créé par Alexandre BERTRAND · <a href="mailto:alexandre@bertrand.al">alexandre@bertrand.al</a> · <a href="https://bertrand.al/exandre/" target="_blank" rel="noopener">bertrand.al/exandre</a></div>
 <button id="aller" type="button">Aller à une adresse</button>
 <div id="recherche" role="dialog" aria-label="Aller à une adresse" hidden><form id="fRech"><input id="qRech" type="search" placeholder="Adresse, commune, lieu… dans les Pyrénées-Orientales" autocomplete="off" aria-label="Adresse"><button type="submit">Chercher</button><button type="button" id="fermerRech" aria-label="Fermer">✕</button></form><ul id="resRech"></ul></div>
 <button id="comptebtn" type="button">Mes stats</button>
@@ -98,7 +98,7 @@ body.tactile #credit{display:none}
   <form id="fConnexion" hidden><p id="envoye"></p><label>Code reçu par e-mail<input id="cCode" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required></label>
     <div class="actions"><button type="submit">Valider</button><button type="button" class="second" id="retourCode">Changer d'adresse</button></div></form>
   <p class="msg" id="msgCompte" role="status" aria-live="polite"></p>
-  <small>Ton e-mail sert uniquement à te connecter et aux messages liés au jeu : pas de publicité, pas de spam, rien n'est revendu. Ton pseudo et tes trajets sont visibles des autres joueurs. Tu peux supprimer ton compte à tout moment depuis « Mes stats ». Jeu non commercial créé par Alexandre Bertrand, une question : <a href="mailto:alexandre@bertrand.al">alexandre@bertrand.al</a></small>
+  <small>Ton e-mail sert uniquement à te connecter et aux messages liés au jeu : pas de publicité, pas de spam, rien n'est revendu. Ton pseudo et tes trajets sont visibles des autres joueurs. Tu peux supprimer ton compte à tout moment depuis « Mes stats ». Projet personnel non commercial créé par Alexandre Bertrand, sans lien avec le jumeau numérique national de l'État (JUNN). Une question : <a href="mailto:alexandre@bertrand.al">alexandre@bertrand.al</a></small>
 </div></div>
 <div class="voile" id="vStats" hidden><div class="boite" role="dialog" aria-modal="true" aria-labelledby="tStats">
   <h2 id="tStats">Stats</h2>
@@ -107,7 +107,7 @@ body.tactile #credit{display:none}
   <div class="actions"><button type="button" class="second" id="fermerStats">Fermer</button></div>
 </div></div>
 <div id="credit">Données IGN : BD TOPO, LiDAR HD, BD ORTHO, cadastre · © contributeurs OpenStreetMap</div>
-<div id="charge"><h1>METAVERSE FRANCE</h1><p id="etape">Chargement…</p><div id="barre"><b></b></div></div>
+<div id="charge"><h1>JUMEAU NUMÉRIQUE DE LA FRANCE</h1><p>Territoire par territoire · projet personnel, non officiel et sans but lucratif</p><p id="etape">Chargement…</p><div id="barre"><b></b></div></div>
 <script type="importmap">__IMPORTMAP__</script>
 <script defer src="https://flux.customs-toolbox.com/script.js" data-website-id="629d4c48-e3dc-4308-9f97-c43316c2f989"></script>
 <script type="module">

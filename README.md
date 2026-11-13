@@ -1,4 +1,6 @@
-# Metaverse France
+# Jumeau numérique de la France, territoire par territoire
+
+Projet personnel, non officiel et sans but lucratif, d'Alexandre Bertrand. Sans lien avec le jumeau numérique national de l'État (JUNN).
 
 Jeu de conduite (et de vol à basse altitude) en 3D dans le navigateur, commencé sur les Pyrénées-Orientales, construit uniquement à partir de données ouvertes. Aucune IA ne tourne pendant le jeu.
 
